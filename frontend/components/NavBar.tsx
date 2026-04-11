@@ -11,29 +11,29 @@ const links = [
   { href: "/sell", label: "Sell & Trade" },
 ];
 
-function SearchIconButton() {
-  return (
-    <button
-      type="button"
-      aria-label="Search"
-      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-brand-gray bg-white text-brand-black transition duration-300 hover:scale-105 hover:border-brand-green/40 hover:bg-brand-bg"
-    >
-      <svg
-        width="18"
-        height="18"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        aria-hidden
-      >
-        <circle cx="11" cy="11" r="7" />
-        <path d="M21 21l-4.2-4.2" />
-      </svg>
-    </button>
-  );
-}
+// function SearchIconButton() {
+//   return (
+//     <button
+//       type="button"
+//       aria-label="Search"
+//       className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-brand-gray bg-white text-brand-black transition duration-300 hover:scale-105 hover:border-brand-green/40 hover:bg-brand-bg"
+//     >
+//       <svg
+//         width="18"
+//         height="18"
+//         viewBox="0 0 24 24"
+//         fill="none"
+//         stroke="currentColor"
+//         strokeWidth="2"
+//         strokeLinecap="round"
+//         aria-hidden
+//       >
+//         <circle cx="11" cy="11" r="7" />
+//         <path d="M21 21l-4.2-4.2" />
+//       </svg>
+//     </button>
+//   );
+// }
 
 export function NavBar() {
   const pathname = usePathname();
@@ -49,7 +49,7 @@ export function NavBar() {
             className="h-3 w-3 rounded-sm bg-brand-green"
             aria-hidden
           />
-          novis
+          Novis
         </Link>
         <nav
           className="hidden items-center gap-8 lg:flex"
@@ -69,7 +69,7 @@ export function NavBar() {
           ))}
         </nav>
         <div className="flex items-center gap-2 sm:gap-3">
-          <SearchIconButton />
+          {/* <SearchIconButton /> */}
           <details className="relative lg:hidden">
             <summary className="flex h-10 cursor-pointer list-none items-center justify-center rounded-full border border-brand-gray bg-white px-3 text-xs font-medium text-neutral-700 transition duration-300 hover:scale-105">
               Menu

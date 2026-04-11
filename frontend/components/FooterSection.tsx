@@ -11,7 +11,7 @@ export function FooterSection() {
               className="h-2 w-2 rounded-sm bg-brand-green"
               aria-hidden
             />
-            novis
+            Novis
           </p>
           <p className="mt-2 text-xs text-neutral-500">
             DeFi Yield Optimizer · Base · USDC

@@ -7,6 +7,7 @@ import { ConnectWalletControl } from "@/components/wallet/ConnectWalletControl";
 const links = [
   { href: "/features", label: "Features" },
   { href: "/marketplace", label: "Marketplace" },
+  { href: "/backtest", label: "Backtest" },
   { href: "/buy", label: "Buy" },
   { href: "/sell", label: "Sell & Trade" },
 ];

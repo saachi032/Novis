@@ -2,9 +2,10 @@
 
 import { useAccount, useBalance } from "wagmi";
 import { useUserVaultShares, useTotalAssets } from "@/lib/hooks/useVaultData";
+import { BASE_SEPOLIA_ADDRESSES } from "@/lib/contracts";
 
-const USDC_BASE =
-  "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as const;
+// Use Base Sepolia testnet USDC address
+const USDC_ADDRESS = BASE_SEPOLIA_ADDRESSES.usdc;
 
 function shorten(addr: string) {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
@@ -14,7 +15,7 @@ export function WalletOverview() {
   const { address, isConnected } = useAccount();
   const { data: bal } = useBalance({
     address,
-    token: USDC_BASE,
+    token: USDC_ADDRESS,
     query: { enabled: !!address },
   });
   const { shares } = useUserVaultShares(address);

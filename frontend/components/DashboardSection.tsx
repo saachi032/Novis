@@ -5,6 +5,7 @@ import { StatCard } from "@/components/StatCard";
 import { WalletOverview } from "@/components/WalletOverview";
 import { ProtocolAllocation } from "@/components/ProtocolAllocation";
 import { RiskAndFees } from "@/components/RiskAndFees";
+import { CheckingDuration } from "@/components/CheckingDuration";
 import { RebalanceTable } from "@/components/RebalanceTable";
 import { MarketplacePortfolio } from "@/components/marketplace/MarketplacePortfolio";
 import { useVaultAPYs, useUserPositionValue } from "@/lib/hooks/useVaultData";
@@ -51,11 +52,7 @@ export function DashboardSection() {
           />
           <ProtocolAllocation />
           <RiskAndFees />
-          <StatCard
-            label="Automation status"
-            value="Nominal"
-            sub="Chainlink Automation; manual fallback documented in PRD"
-          />
+          <CheckingDuration />
         </div>
 
         <div className="mt-8">

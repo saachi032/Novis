@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { useAccount } from "wagmi";
-import { MOCK_INVESTMENTS } from "@/components/marketplace/mockInvestments";
 import { useTotalAssets, useUserVaultShares, useVaultAPYs, useUserPositionValue } from "@/lib/hooks/useVaultData";
 
 function formatUsd(n: number) {
@@ -27,22 +26,9 @@ export function MarketplacePortfolio() {
   const hasPosition = shareBigInt > 0;
 
   const totals = useMemo(() => {
-    if (!hasPosition) {
-      // Show demo data if no position
-      const deposited = MOCK_INVESTMENTS.reduce((s, i) => s + i.deposited, 0);
-      const current = MOCK_INVESTMENTS.reduce((s, i) => s + i.currentValue, 0);
-      const yieldUsd = MOCK_INVESTMENTS.reduce((s, i) => s + i.yieldUsd, 0);
-      const returnPct =
-        deposited > 0 ? ((current - deposited) / deposited) * 100 : 0;
-      const avgApy =
-        MOCK_INVESTMENTS.reduce((s, i) => s + i.apy, 0) /
-        MOCK_INVESTMENTS.length;
-      return { deposited, current, yieldUsd, returnPct, avgApy, isDemo: true };
-    }
-
-    // Real data
+    // Only show real data - no mock/demo data
     const currentValue = parseFloat(positionValue || "0");
-    const deposited = shareBigInt; // Simplified: assumes 1:1 share to USDC
+    const deposited = shareBigInt;
     const yieldUsd = currentValue - deposited;
     const returnPct = deposited > 0 ? (yieldUsd / deposited) * 100 : 0;
     const avgApy = parseFloat(blendedAPY || "0");
@@ -53,9 +39,8 @@ export function MarketplacePortfolio() {
       yieldUsd,
       returnPct,
       avgApy,
-      isDemo: false,
     };
-  }, [hasPosition, positionValue, shareBigInt, blendedAPY]);
+  }, [positionValue, shareBigInt, blendedAPY]);
 
   return (
     <>
@@ -103,23 +88,23 @@ export function MarketplacePortfolio() {
               Total vault assets: ${parseFloat(totalAssets || "0").toFixed(2)}
             </>
           ) : (
-            "Connect your wallet and deposit USDC to start earning yield."
+            "No investments yet. Connect your wallet and deposit USDC to start earning yield."
           )}
         </p>
-        <div className="mt-4 overflow-x-auto rounded-2xl border border-brand-gray/80 bg-white shadow-soft">
-          <table className="w-full min-w-[640px] text-left text-sm">
-            <thead>
-              <tr className="border-b border-brand-gray/60 bg-brand-bg/80 text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                <th className="px-4 py-3">Position</th>
-                <th className="px-4 py-3">Deposited</th>
-                <th className="px-4 py-3">Value</th>
-                <th className="px-4 py-3">Yield</th>
-                <th className="px-4 py-3">Return</th>
-                <th className="px-4 py-3">APY</th>
-              </tr>
-            </thead>
-            <tbody>
-              {hasPosition ? (
+        {hasPosition ? (
+          <div className="mt-4 overflow-x-auto rounded-2xl border border-brand-gray/80 bg-white shadow-soft">
+            <table className="w-full min-w-[640px] text-left text-sm">
+              <thead>
+                <tr className="border-b border-brand-gray/60 bg-brand-bg/80 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                  <th className="px-4 py-3">Position</th>
+                  <th className="px-4 py-3">Deposited</th>
+                  <th className="px-4 py-3">Value</th>
+                  <th className="px-4 py-3">Yield</th>
+                  <th className="px-4 py-3">Return</th>
+                  <th className="px-4 py-3">APY</th>
+                </tr>
+              </thead>
+              <tbody>
                 <tr className="border-b border-brand-gray/40 transition-colors hover:bg-brand-bg/60">
                   <td className="px-4 py-3">
                     <div className="text-left font-semibold text-brand-black">
@@ -145,42 +130,16 @@ export function MarketplacePortfolio() {
                     {blendedAPY}%
                   </td>
                 </tr>
-              ) : (
-                MOCK_INVESTMENTS.map((inv) => (
-                  <tr
-                    key={inv.id}
-                    className="border-b border-brand-gray/40 transition-colors hover:bg-brand-bg/60"
-                  >
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`/marketplace/${inv.id}`}
-                        className="text-left font-semibold text-brand-black underline-offset-2 hover:underline"
-                      >
-                        {inv.name}
-                      </Link>
-                      <p className="text-[11px] text-neutral-500">
-                        {inv.protocol}
-                      </p>
-                    </td>
-                    <td className="px-4 py-3 font-mono text-xs">
-                      {formatUsd(inv.deposited)}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-xs">
-                      {formatUsd(inv.currentValue)}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-xs text-brand-green">
-                      +{formatUsd(inv.yieldUsd)}
-                    </td>
-                    <td className="px-4 py-3 font-semibold text-brand-black">
-                      +{inv.returnPct.toFixed(2)}%
-                    </td>
-                    <td className="px-4 py-3">{inv.apy.toFixed(2)}%</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="mt-4 rounded-2xl border border-brand-gray/40 bg-brand-bg/30 p-6 text-center">
+            <p className="text-xs text-neutral-600">
+              Your vault positions will appear here once you deposit USDC.
+            </p>
+          </div>
+        )}
       </div>
     </>
   );

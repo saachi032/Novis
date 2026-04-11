@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useAccount, useWriteContract } from "wagmi";
 import { BASE_SEPOLIA_ADDRESSES } from "@/lib/contracts";
 import { VAULT_MANAGER_ABI } from "@/lib/abis/VaultManager";
@@ -10,51 +10,71 @@ import { parseUSDC } from "@/lib/utils/contractUtils";
  */
 export function useDeposit() {
   const { address } = useAccount();
-  const { writeContract, data: hash, isPending } = useWriteContract();
-
-  const deposit = useCallback(
-    async (amount: string) => {
-      if (!address) {
-        throw new Error("Wallet not connected");
-      }
-
-      const parsedAmount = parseUSDC(amount);
-
-      // First, approve the vault to spend USDC
-      writeContract({
-        address: BASE_SEPOLIA_ADDRESSES.usdc,
-        abi: USDC_ABI,
-        functionName: "approve",
-        args: [BASE_SEPOLIA_ADDRESSES.vaultManager, parsedAmount],
-      });
-    },
-    [address, writeContract]
-  );
+  const { writeContract, isPending } = useWriteContract();
+  const [hash, setHash] = useState<string | null>(null);
+  const [step, setStep] = useState<"idle" | "approving" | "depositing">("idle");
 
   const depositIntoVault = useCallback(
-    async (amount: string) => {
-      if (!address) {
-        throw new Error("Wallet not connected");
-      }
+    (amount: string) => {
+      return new Promise<void>((resolve, reject) => {
+        if (!address) {
+          reject(new Error("Wallet not connected"));
+          return;
+        }
 
-      const parsedAmount = parseUSDC(amount);
+        const parsedAmount = parseUSDC(amount);
 
-      // Deposit into vault
-      writeContract({
-        address: BASE_SEPOLIA_ADDRESSES.vaultManager,
-        abi: VAULT_MANAGER_ABI,
-        functionName: "deposit",
-        args: [parsedAmount, address],
+        // Step 1: Approve USDC spending
+        setStep("approving");
+        writeContract(
+          {
+            address: BASE_SEPOLIA_ADDRESSES.usdc,
+            abi: USDC_ABI,
+            functionName: "approve",
+            args: [BASE_SEPOLIA_ADDRESSES.vaultManager, parsedAmount],
+          },
+          {
+            onSuccess: () => {
+              // Wait a moment for approval to settle, then deposit
+              setTimeout(() => {
+                setStep("depositing");
+                writeContract(
+                  {
+                    address: BASE_SEPOLIA_ADDRESSES.vaultManager,
+                    abi: VAULT_MANAGER_ABI,
+                    functionName: "deposit",
+                    args: [parsedAmount, address],
+                  },
+                  {
+                    onSuccess: (txHash) => {
+                      setHash(txHash);
+                      setStep("idle");
+                      resolve();
+                    },
+                    onError: (err) => {
+                      setStep("idle");
+                      reject(err);
+                    },
+                  }
+                );
+              }, 1000);
+            },
+            onError: (err) => {
+              setStep("idle");
+              reject(err);
+            },
+          }
+        );
       });
     },
     [address, writeContract]
   );
 
   return {
-    deposit,
     depositIntoVault,
-    isLoading: isPending,
+    isLoading: isPending || step !== "idle",
     hash,
+    step,
   };
 }
 
@@ -63,22 +83,37 @@ export function useDeposit() {
  */
 export function useWithdraw() {
   const { address } = useAccount();
-  const { writeContract, data: hash, isPending } = useWriteContract();
+  const { writeContract, isPending } = useWriteContract();
+  const [hash, setHash] = useState<string | null>(null);
 
   const withdraw = useCallback(
-    async (shares: string) => {
-      if (!address) {
-        throw new Error("Wallet not connected");
-      }
+    (shares: string) => {
+      return new Promise<void>((resolve, reject) => {
+        if (!address) {
+          reject(new Error("Wallet not connected"));
+          return;
+        }
 
-      const parsedShares = parseUSDC(shares);
+        const parsedShares = parseUSDC(shares);
 
-      // Redeem shares from vault
-      writeContract({
-        address: BASE_SEPOLIA_ADDRESSES.vaultManager,
-        abi: VAULT_MANAGER_ABI,
-        functionName: "redeem",
-        args: [parsedShares, address, address],
+        // Redeem shares from vault
+        writeContract(
+          {
+            address: BASE_SEPOLIA_ADDRESSES.vaultManager,
+            abi: VAULT_MANAGER_ABI,
+            functionName: "redeem",
+            args: [parsedShares, address, address],
+          },
+          {
+            onSuccess: (txHash) => {
+              setHash(txHash);
+              resolve();
+            },
+            onError: (err) => {
+              reject(err);
+            },
+          }
+        );
       });
     },
     [address, writeContract]

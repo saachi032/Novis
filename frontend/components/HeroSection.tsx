@@ -23,7 +23,7 @@ export function HeroSection() {
           <div className="relative grid gap-10 lg:grid-cols-12 lg:items-end lg:gap-12">
             <div className="order-2 max-w-md lg:order-1 lg:col-span-4">
               <p className="text-pretty text-sm leading-relaxed text-neutral-600 sm:text-base">
-                novis is an on-chain robo-advisor for USDC on Base: it routes
+                Novis is an on-chain robo-advisor for USDC on Base: it routes
                 liquidity across Aave v3 and Compound v3, rebalancing only when
                 the spread clears gas — non-custodial and ERC-4626 aligned.
               </p>
@@ -40,7 +40,7 @@ export function HeroSection() {
                   )}
                 </ConnectButton.Custom>
                 <a
-                  href="#features"
+                  href="/features"
                   className="inline-flex items-center justify-center rounded-full border border-brand-gray bg-white px-8 py-3.5 text-sm font-semibold text-brand-black transition duration-300 hover:scale-105 hover:bg-brand-bg"
                 >
                   Learn more

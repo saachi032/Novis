@@ -13,10 +13,11 @@ const config: Config = {
         foreground: "var(--foreground)",
         brand: {
           green: "#557571",
+          // yellow: "#EDE087",
           black: "#000000",
           gray: "#D9D9D9",
           white: "#FFFFFF",
-          bg: "#f5f5f5",
+          bg: "#FAFAF5",
         },
       },
       fontFamily: {

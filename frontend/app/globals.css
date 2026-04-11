@@ -3,9 +3,10 @@
 @tailwind utilities;
 
 :root {
-  --background: #f5f5f5;
+  --background: #FAFAF5;
   --foreground: #000000;
   --brand-green: #557571;
+  /* --brand-yellow: #EDE087; */
   --brand-gray: #d9d9d9;
 }
 

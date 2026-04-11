@@ -5,14 +5,6 @@ import { network } from "hardhat";
 import { getAddress } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
-type RiskConfig = {
-  key: "conservative" | "balanced" | "aggressive";
-  label: string;
-  level: number;
-  vaultName: string;
-  vaultSymbol: string;
-};
-
 function requireEnv(name: string): string {
   const value = process.env[name];
   if (value === undefined || value.trim() === "") {
@@ -29,18 +21,14 @@ function optionalAddress(name: string, fallback: string): string {
   return value.trim();
 }
 
-async function waitForHash(publicClient: Awaited<ReturnType<typeof getPublicClient>>, hash: `0x${string}`) {
-  await publicClient.waitForTransactionReceipt({ hash });
-}
-
-async function getPublicClient() {
+async function waitForHash(hash: `0x${string}`) {
   const { viem } = await network.connect();
-  return viem.getPublicClient();
+  const publicClient = await viem.getPublicClient();
+  await publicClient.waitForTransactionReceipt({ hash });
 }
 
 async function main() {
   const { viem } = await network.connect();
-  const publicClient = await viem.getPublicClient();
   const privateKey = requireEnv("PRIVATE_KEY");
   const rpcUrl = requireEnv("BASE_SEPOLIA_RPC_URL");
   const usdcAddress = getAddress(requireEnv("USDC_ADDRESS"));
@@ -50,103 +38,67 @@ async function main() {
   const deployerAccount = privateKeyToAccount(privateKey as `0x${string}`);
   const initialOwner = getAddress(optionalAddress("INITIAL_OWNER_ADDRESS", deployerAccount.address));
   const treasuryAddress = getAddress(optionalAddress("TREASURY_ADDRESS", initialOwner));
+  const keeperAddress = getAddress(optionalAddress("KEEPER_ADDRESS", initialOwner));
+  const vaultName = process.env.VAULT_NAME?.trim() || "VaultMind USDC Vault";
+  const vaultSymbol = process.env.VAULT_SYMBOL?.trim() || "vUSDC";
 
-  const riskConfigs: RiskConfig[] = [
-    {
-      key: "conservative",
-      label: "Conservative",
-      level: 0,
-      vaultName: process.env.CONSERVATIVE_VAULT_NAME?.trim() || "Yield Optimizer Conservative Vault",
-      vaultSymbol: process.env.CONSERVATIVE_VAULT_SYMBOL?.trim() || "yoUSDC-C"
-    },
-    {
-      key: "balanced",
-      label: "Balanced",
-      level: 1,
-      vaultName: process.env.BALANCED_VAULT_NAME?.trim() || "Yield Optimizer Balanced Vault",
-      vaultSymbol: process.env.BALANCED_VAULT_SYMBOL?.trim() || "yoUSDC-B"
-    },
-    {
-      key: "aggressive",
-      label: "Aggressive",
-      level: 2,
-      vaultName: process.env.AGGRESSIVE_VAULT_NAME?.trim() || "Yield Optimizer Aggressive Vault",
-      vaultSymbol: process.env.AGGRESSIVE_VAULT_SYMBOL?.trim() || "yoUSDC-A"
-    }
-  ];
-
-  console.log("Deploying to Base Sepolia");
+  console.log("Deploying VaultMind to Base Sepolia");
   console.log(`RPC: ${rpcUrl}`);
   console.log(`Deployer: ${deployerAccount.address}`);
   console.log(`Initial owner: ${initialOwner}`);
   console.log(`Treasury: ${treasuryAddress}`);
+  console.log(`Keeper: ${keeperAddress}`);
 
   const riskRegistry = await viem.deployContract("RiskRegistry", [initialOwner]);
   console.log(`RiskRegistry: ${riskRegistry.address}`);
 
-  const profiles: Record<string, Record<string, `0x${string}`>> = {};
+  const strategyRouter = await viem.deployContract("StrategyRouter", [
+    usdcAddress,
+    aavePoolAddress,
+    compoundCometAddress,
+    riskRegistry.address,
+    initialOwner
+  ]);
+  console.log(`StrategyRouter: ${strategyRouter.address}`);
 
-  for (const config of riskConfigs) {
-    console.log(`Deploying ${config.label} profile`);
+  const vaultManager = await viem.deployContract("VaultManager", [
+    usdcAddress,
+    vaultName,
+    vaultSymbol,
+    riskRegistry.address,
+    initialOwner
+  ]);
+  console.log(`VaultManager: ${vaultManager.address}`);
 
-    const strategyRouter = await viem.deployContract("StrategyRouter", [
-      usdcAddress,
-      aavePoolAddress,
-      compoundCometAddress,
-      config.level,
-      initialOwner
-    ]);
-    console.log(`${config.label} StrategyRouter: ${strategyRouter.address}`);
+  const feeCollector = await viem.deployContract("FeeCollector", [
+    usdcAddress,
+    vaultManager.address,
+    treasuryAddress,
+    initialOwner
+  ]);
+  console.log(`FeeCollector: ${feeCollector.address}`);
 
-    const vaultManager = await viem.deployContract("VaultManager", [
-      usdcAddress,
-      config.vaultName,
-      config.vaultSymbol,
-      riskRegistry.address,
-      config.level,
-      initialOwner
-    ]);
-    console.log(`${config.label} VaultManager: ${vaultManager.address}`);
-
-    const feeCollector = await viem.deployContract("FeeCollector", [
-      usdcAddress,
-      vaultManager.address,
-      treasuryAddress,
-      initialOwner
-    ]);
-    console.log(`${config.label} FeeCollector: ${feeCollector.address}`);
-
-    const rebalanceExecutor = await viem.deployContract("RebalanceExecutor", [
-      strategyRouter.address,
-      initialOwner
-    ]);
-    console.log(`${config.label} RebalanceExecutor: ${rebalanceExecutor.address}`);
-
-    await waitForHash(publicClient, await vaultManager.write.setStrategyRouter([strategyRouter.address]));
-    await waitForHash(publicClient, await vaultManager.write.setFeeCollector([feeCollector.address]));
-    await waitForHash(publicClient, await strategyRouter.write.setVault([vaultManager.address]));
-    await waitForHash(publicClient, await strategyRouter.write.setRebalanceOperator([rebalanceExecutor.address]));
-
-    profiles[config.key] = {
-      strategyRouter: strategyRouter.address,
-      vaultManager: vaultManager.address,
-      feeCollector: feeCollector.address,
-      rebalanceExecutor: rebalanceExecutor.address
-    };
-  }
+  await waitForHash(await vaultManager.write.setStrategyRouter([strategyRouter.address]));
+  await waitForHash(await vaultManager.write.setFeeCollector([feeCollector.address]));
+  await waitForHash(await strategyRouter.write.setVault([vaultManager.address]));
+  await waitForHash(await strategyRouter.write.setKeeper([keeperAddress]));
+  await waitForHash(await riskRegistry.write.setAuthorizedCaller([strategyRouter.address, true]));
 
   const deployment = {
     network: "baseSepolia",
     deployer: deployerAccount.address,
     initialOwner,
     treasuryAddress,
+    keeperAddress,
     addresses: {
       usdc: usdcAddress,
       aavePool: aavePoolAddress,
       compoundComet: compoundCometAddress,
-      riskRegistry: riskRegistry.address
-    },
-    profiles
+      riskRegistry: riskRegistry.address,
+      strategyRouter: strategyRouter.address,
+      vaultManager: vaultManager.address,
+      feeCollector: feeCollector.address
+    }
   };
 
   const outputDir = join(process.cwd(), "deployments");

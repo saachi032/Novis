@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
@@ -17,40 +16,52 @@ contract StrategyRouter is Ownable, ReentrancyGuard {
         Compound
     }
 
+    struct UserPosition {
+        uint256 aaveBalance;
+        uint256 compoundBalance;
+    }
+
+    uint256 public constant PERCENTAGE_DENOMINATOR = 100;
     uint256 public constant BPS_DENOMINATOR = 10_000;
     uint256 public constant AAVE_RAY_TO_BPS_DIVISOR = 1e23;
 
     IERC20 public immutable assetToken;
-    IRiskRegistry.RiskLevel public immutable riskLevel;
     IAavePool public aavePool;
     ICompoundToken public compoundToken;
+    IRiskRegistry public immutable riskRegistry;
 
     address public vault;
-    address public rebalanceOperator;
+    address public keeper;
+    bool public demoMode = true;
 
     uint256 public blocksPerYear = 2_628_000;
-    uint256 public aaveManagedAssets;
-    uint256 public compoundManagedAssets;
+    uint256 public totalAaveManagedAssets;
+    uint256 public totalCompoundManagedAssets;
+
+    mapping(address user => UserPosition position) public userPositions;
 
     event VaultUpdated(address indexed vault);
-    event RebalanceOperatorUpdated(address indexed operator);
+    event KeeperUpdated(address indexed keeper);
+    event DemoModeUpdated(bool enabled);
     event ProtocolAddressesUpdated(address indexed aavePool, address indexed compoundToken);
-    event Invested(uint256 amount, uint256 aaveAmount, uint256 compoundAmount);
-    event Redeemed(Protocol indexed protocol, uint256 amount, address indexed recipient);
-    event Rebalanced(Protocol indexed fromProtocol, Protocol indexed toProtocol, uint256 amount);
+    event UserFundsInvested(address indexed user, uint256 amount, uint256 toAave, uint256 toCompound);
+    event UserFundsRedeemed(address indexed user, uint256 amount, uint256 fromAave, uint256 fromCompound);
+    event UserRebalanced(address indexed user, Protocol fromProtocol, Protocol toProtocol, uint256 amount);
 
     error OnlyVault();
-    error OnlyOperator();
+    error OnlyKeeper();
     error InvalidAddress();
-    error InvalidProtocol();
+    error StrategyNotSet();
+    error InsufficientUserBalance();
+    error RebalanceNotReady();
 
     modifier onlyVault() {
         if (msg.sender != vault) revert OnlyVault();
         _;
     }
 
-    modifier onlyOperator() {
-        if (msg.sender != owner() && msg.sender != rebalanceOperator) revert OnlyOperator();
+    modifier onlyKeeper() {
+        if (msg.sender != owner() && msg.sender != keeper) revert OnlyKeeper();
         _;
     }
 
@@ -58,17 +69,17 @@ contract StrategyRouter is Ownable, ReentrancyGuard {
         address asset_,
         address aavePool_,
         address compoundToken_,
-        IRiskRegistry.RiskLevel riskLevel_,
+        address riskRegistry_,
         address initialOwner_
     ) Ownable(initialOwner_) {
-        if (asset_ == address(0) || aavePool_ == address(0) || compoundToken_ == address(0)) {
+        if (asset_ == address(0) || aavePool_ == address(0) || compoundToken_ == address(0) || riskRegistry_ == address(0)) {
             revert InvalidAddress();
         }
 
         assetToken = IERC20(asset_);
-        riskLevel = riskLevel_;
         aavePool = IAavePool(aavePool_);
         compoundToken = ICompoundToken(compoundToken_);
+        riskRegistry = IRiskRegistry(riskRegistry_);
     }
 
     function setVault(address vault_) external onlyOwner {
@@ -77,9 +88,10 @@ contract StrategyRouter is Ownable, ReentrancyGuard {
         emit VaultUpdated(vault_);
     }
 
-    function setRebalanceOperator(address operator_) external onlyOwner {
-        rebalanceOperator = operator_;
-        emit RebalanceOperatorUpdated(operator_);
+    function setKeeper(address keeper_) external onlyOwner {
+        if (keeper_ == address(0)) revert InvalidAddress();
+        keeper = keeper_;
+        emit KeeperUpdated(keeper_);
     }
 
     function setProtocolAddresses(address aavePool_, address compoundToken_) external onlyOwner {
@@ -89,181 +101,191 @@ contract StrategyRouter is Ownable, ReentrancyGuard {
         emit ProtocolAddressesUpdated(aavePool_, compoundToken_);
     }
 
+    function setDemoMode(bool enabled) external onlyOwner {
+        demoMode = enabled;
+        emit DemoModeUpdated(enabled);
+    }
+
     function setBlocksPerYear(uint256 newBlocksPerYear) external onlyOwner {
         require(newBlocksPerYear > 0, "blocksPerYear=0");
         blocksPerYear = newBlocksPerYear;
     }
 
-    function getCurrentAPYs() public view returns (uint256 aaveAPYBps, uint256 compoundAPYBps) {
+    function getAaveAPY() public view returns (uint256 aaveAPYBps) {
         IAavePool.ReserveData memory reserveData = aavePool.getReserveData(address(assetToken));
         aaveAPYBps = uint256(reserveData.currentLiquidityRate) / AAVE_RAY_TO_BPS_DIVISOR;
+    }
 
+    function getCompoundAPY() public view returns (uint256 compoundAPYBps) {
         uint256 ratePerBlock = compoundToken.supplyRatePerBlock();
         compoundAPYBps = (ratePerBlock * blocksPerYear * BPS_DENOMINATOR) / 1e18;
     }
 
-    function getAllocation() public view returns (uint256 aaveAllocationBps, uint256 compoundAllocationBps) {
-        return getAllocationForRisk(riskLevel);
-    }
-
-    function getAllocationForRisk(
-        IRiskRegistry.RiskLevel level
-    ) public view returns (uint256 aaveAllocationBps, uint256 compoundAllocationBps) {
-        (uint256 aaveAPYBps, uint256 compoundAPYBps) = getCurrentAPYs();
-
-        if (level == IRiskRegistry.RiskLevel.Conservative) {
-            if (aaveAPYBps >= compoundAPYBps) {
-                return (BPS_DENOMINATOR, 0);
-            }
-            return (7_000, 3_000);
-        }
-
-        if (level == IRiskRegistry.RiskLevel.Aggressive) {
-            if (aaveAPYBps == compoundAPYBps) {
-                return (5_000, 5_000);
-            }
-            if (aaveAPYBps > compoundAPYBps) {
-                return (BPS_DENOMINATOR, uint256(0));
-            }
-            return (uint256(0), BPS_DENOMINATOR);
-        }
-
-        (aaveAllocationBps, compoundAllocationBps) = _proportionalAllocation(aaveAPYBps, compoundAPYBps);
-
-        if (aaveAllocationBps < 3_000) {
-            return (3_000, 7_000);
-        }
-        if (compoundAllocationBps < 3_000) {
-            return (7_000, 3_000);
-        }
-    }
-
-    function protocolBalance(Protocol protocol) public view returns (uint256) {
-        if (protocol == Protocol.Aave) {
-            return aaveManagedAssets;
-        }
-        if (protocol == Protocol.Compound) {
-            return compoundManagedAssets;
-        }
-        revert InvalidProtocol();
+    function getCurrentAPYs() public view returns (uint256 aaveAPYBps, uint256 compoundAPYBps) {
+        aaveAPYBps = getAaveAPY();
+        compoundAPYBps = getCompoundAPY();
     }
 
     function totalManagedAssets() public view returns (uint256) {
-        return aaveManagedAssets + compoundManagedAssets;
+        return totalAaveManagedAssets + totalCompoundManagedAssets;
     }
 
-    function investFunds(uint256 amount) external onlyVault nonReentrant {
+    function getUserProtocolBalances(address user) external view returns (uint256 aaveBalance, uint256 compoundBalance) {
+        UserPosition memory position = userPositions[user];
+        return (position.aaveBalance, position.compoundBalance);
+    }
+
+    function investFunds(uint256 amount, address user) external onlyVault nonReentrant {
         if (amount == 0) {
             return;
         }
+        if (!riskRegistry.hasStrategy(user)) revert StrategyNotSet();
 
-        (uint256 aaveAllocationBps, ) = getAllocation();
-        uint256 aaveAmount = (amount * aaveAllocationBps) / BPS_DENOMINATOR;
-        uint256 compoundAmount = amount - aaveAmount;
+        (uint8 riskPercentage, ) = riskRegistry.getUserStrategy(user);
+        (Protocol higherYieldProtocol, ) = _getHigherAndLowerProtocols();
 
-        if (aaveAmount > 0) {
-            _depositIntoAave(aaveAmount);
+        uint256 toHigherYield = (amount * riskPercentage) / PERCENTAGE_DENOMINATOR;
+        uint256 toLowerYield = amount - toHigherYield;
+
+        uint256 toAave = higherYieldProtocol == Protocol.Aave ? toHigherYield : toLowerYield;
+        uint256 toCompound = amount - toAave;
+
+        if (toAave > 0) {
+            _depositToProtocol(Protocol.Aave, toAave);
+            userPositions[user].aaveBalance += toAave;
+            totalAaveManagedAssets += toAave;
         }
-        if (compoundAmount > 0) {
-            _depositIntoCompound(compoundAmount);
+
+        if (toCompound > 0) {
+            _depositToProtocol(Protocol.Compound, toCompound);
+            userPositions[user].compoundBalance += toCompound;
+            totalCompoundManagedAssets += toCompound;
         }
 
-        emit Invested(amount, aaveAmount, compoundAmount);
+        emit UserFundsInvested(user, amount, toAave, toCompound);
     }
 
-    function redeemFunds(uint256 amount, Protocol protocol) external onlyVault nonReentrant returns (uint256 withdrawn) {
-        withdrawn = _withdrawProtocolFunds(protocol, amount);
-        if (withdrawn > 0) {
-            assetToken.safeTransfer(vault, withdrawn);
-        }
-        emit Redeemed(protocol, withdrawn, vault);
-    }
-
-    function withdrawToVault(uint256 amount) external onlyVault nonReentrant returns (uint256 withdrawn) {
+    function redeemFunds(uint256 amount, address user) external onlyVault nonReentrant returns (uint256 withdrawn) {
+        UserPosition memory position = userPositions[user];
+        uint256 userTotal = position.aaveBalance + position.compoundBalance;
+        if (amount > userTotal) revert InsufficientUserBalance();
         if (amount == 0) {
             return 0;
         }
 
-        Protocol firstProtocol = aaveManagedAssets >= compoundManagedAssets ? Protocol.Aave : Protocol.Compound;
-        Protocol secondProtocol = firstProtocol == Protocol.Aave ? Protocol.Compound : Protocol.Aave;
+        uint256 fromAave = userTotal == 0 ? 0 : (amount * position.aaveBalance) / userTotal;
+        uint256 fromCompound = amount - fromAave;
 
-        uint256 firstAvailable = protocolBalance(firstProtocol);
-        uint256 firstWithdrawal = firstAvailable >= amount ? amount : firstAvailable;
-
-        if (firstWithdrawal > 0) {
-            withdrawn += _withdrawProtocolFunds(firstProtocol, firstWithdrawal);
+        if (fromAave > 0) {
+            _withdrawFromProtocol(Protocol.Aave, fromAave);
+            userPositions[user].aaveBalance -= fromAave;
+            totalAaveManagedAssets -= fromAave;
+            withdrawn += fromAave;
         }
 
-        if (withdrawn < amount) {
-            withdrawn += _withdrawProtocolFunds(secondProtocol, amount - withdrawn);
+        if (fromCompound > 0) {
+            _withdrawFromProtocol(Protocol.Compound, fromCompound);
+            userPositions[user].compoundBalance -= fromCompound;
+            totalCompoundManagedAssets -= fromCompound;
+            withdrawn += fromCompound;
         }
 
         if (withdrawn > 0) {
             assetToken.safeTransfer(vault, withdrawn);
         }
+
+        emit UserFundsRedeemed(user, withdrawn, fromAave, fromCompound);
     }
 
-    function rebalance(Protocol fromProtocol, Protocol toProtocol, uint256 amount) external onlyOperator nonReentrant {
-        require(fromProtocol != toProtocol, "same protocol");
-        require(amount > 0, "amount=0");
+    function rebalance(address user) external onlyKeeper nonReentrant {
+        if (!riskRegistry.canRebalance(user)) revert RebalanceNotReady();
+        _rebalanceUser(user, true);
+    }
 
-        uint256 withdrawn = _withdrawProtocolFunds(fromProtocol, amount);
-        if (toProtocol == Protocol.Aave) {
-            _depositIntoAave(withdrawn);
-        } else if (toProtocol == Protocol.Compound) {
-            _depositIntoCompound(withdrawn);
-        } else {
-            revert InvalidProtocol();
+    function forceRebalance(address user) external onlyKeeper nonReentrant {
+        _rebalanceUser(user, false);
+    }
+
+    function _rebalanceUser(address user, bool updateTimestamp) internal {
+        if (!riskRegistry.hasStrategy(user)) revert StrategyNotSet();
+
+        UserPosition memory position = userPositions[user];
+        uint256 userTotal = position.aaveBalance + position.compoundBalance;
+        if (userTotal == 0) {
+            if (updateTimestamp) {
+                riskRegistry.updateLastRebalanceTime(user);
+            }
+            return;
         }
 
-        emit Rebalanced(fromProtocol, toProtocol, withdrawn);
-    }
+        (uint8 riskPercentage, ) = riskRegistry.getUserStrategy(user);
+        (Protocol higherYieldProtocol, ) = _getHigherAndLowerProtocols();
 
-    function _proportionalAllocation(
-        uint256 aaveAPYBps,
-        uint256 compoundAPYBps
-    ) internal pure returns (uint256 aaveAllocationBps, uint256 compoundAllocationBps) {
-        uint256 totalAPYBps = aaveAPYBps + compoundAPYBps;
-        if (totalAPYBps == 0) {
-            return (5_000, 5_000);
+        (uint256 targetAave, uint256 targetCompound) = higherYieldProtocol == Protocol.Aave
+            ? ((userTotal * riskPercentage) / PERCENTAGE_DENOMINATOR, userTotal - ((userTotal * riskPercentage) / PERCENTAGE_DENOMINATOR))
+            : (userTotal - ((userTotal * riskPercentage) / PERCENTAGE_DENOMINATOR), (userTotal * riskPercentage) / PERCENTAGE_DENOMINATOR);
+
+        if (position.aaveBalance < targetAave) {
+            uint256 amountToMove = targetAave - position.aaveBalance;
+            _withdrawFromProtocol(Protocol.Compound, amountToMove);
+            _depositToProtocol(Protocol.Aave, amountToMove);
+            userPositions[user].compoundBalance -= amountToMove;
+            userPositions[user].aaveBalance += amountToMove;
+            totalCompoundManagedAssets -= amountToMove;
+            totalAaveManagedAssets += amountToMove;
+            emit UserRebalanced(user, Protocol.Compound, Protocol.Aave, amountToMove);
+        } else if (position.compoundBalance < targetCompound) {
+            uint256 amountToMove = targetCompound - position.compoundBalance;
+            _withdrawFromProtocol(Protocol.Aave, amountToMove);
+            _depositToProtocol(Protocol.Compound, amountToMove);
+            userPositions[user].aaveBalance -= amountToMove;
+            userPositions[user].compoundBalance += amountToMove;
+            totalAaveManagedAssets -= amountToMove;
+            totalCompoundManagedAssets += amountToMove;
+            emit UserRebalanced(user, Protocol.Aave, Protocol.Compound, amountToMove);
         }
 
-        aaveAllocationBps = (aaveAPYBps * BPS_DENOMINATOR) / totalAPYBps;
-        compoundAllocationBps = BPS_DENOMINATOR - aaveAllocationBps;
+        if (updateTimestamp) {
+            riskRegistry.updateLastRebalanceTime(user);
+        }
     }
 
-    function _depositIntoAave(uint256 amount) internal {
-        assetToken.forceApprove(address(aavePool), amount);
-        aavePool.supply(address(assetToken), amount, address(this), 0);
-        aaveManagedAssets += amount;
+    function _getHigherAndLowerProtocols() internal view returns (Protocol higherYieldProtocol, Protocol lowerYieldProtocol) {
+        uint256 aaveAPYBps = getAaveAPY();
+        uint256 compoundAPYBps = getCompoundAPY();
+
+        if (aaveAPYBps >= compoundAPYBps) {
+            return (Protocol.Aave, Protocol.Compound);
+        }
+
+        return (Protocol.Compound, Protocol.Aave);
     }
 
-    function _depositIntoCompound(uint256 amount) internal {
-        assetToken.forceApprove(address(compoundToken), amount);
+    function _depositToProtocol(Protocol protocol, uint256 amount) internal {
+        if (demoMode) {
+            return;
+        }
+
+        assetToken.forceApprove(protocol == Protocol.Aave ? address(aavePool) : address(compoundToken), amount);
+
+        if (protocol == Protocol.Aave) {
+            aavePool.supply(address(assetToken), amount, address(this), 0);
+            return;
+        }
+
         compoundToken.supply(address(assetToken), amount);
-        compoundManagedAssets += amount;
     }
 
-    function _withdrawProtocolFunds(Protocol protocol, uint256 amount) internal returns (uint256 withdrawn) {
-        uint256 available = protocolBalance(protocol);
-        withdrawn = amount > available ? available : amount;
-
-        if (withdrawn == 0) {
-            return 0;
+    function _withdrawFromProtocol(Protocol protocol, uint256 amount) internal {
+        if (demoMode) {
+            return;
         }
 
         if (protocol == Protocol.Aave) {
-            aavePool.withdraw(address(assetToken), withdrawn, address(this));
-            aaveManagedAssets -= withdrawn;
-            return withdrawn;
+            aavePool.withdraw(address(assetToken), amount, address(this));
+            return;
         }
 
-        if (protocol == Protocol.Compound) {
-            compoundToken.withdraw(address(assetToken), withdrawn);
-            compoundManagedAssets -= withdrawn;
-            return withdrawn;
-        }
-
-        revert InvalidProtocol();
+        compoundToken.withdraw(address(assetToken), amount);
     }
 }

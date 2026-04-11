@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { ConnectWalletControl } from "@/components/wallet/ConnectWalletControl";
 
 const links = [
   { href: "/features", label: "Features" },
@@ -89,11 +89,7 @@ export function NavBar() {
               ))}
             </div>
           </details>
-          <ConnectButton
-            showBalance={false}
-            chainStatus="icon"
-            accountStatus="address"
-          />
+          <ConnectWalletControl />
         </div>
       </div>
     </header>

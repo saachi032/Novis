@@ -63,6 +63,10 @@ async function main() {
   await waitForHash(strategyHash);
   console.log(`setStrategy tx: ${strategyHash}`);
 
+  const mockApyHash = await strategyRouter.write.setMockApys([420, 730]);
+  await waitForHash(mockApyHash);
+  console.log(`setMockApys tx: ${mockApyHash}`);
+
   const forceHash = await strategyRouter.write.forceRebalance([user.address]);
   await waitForHash(forceHash);
   console.log(`forceRebalance tx: ${forceHash}`);

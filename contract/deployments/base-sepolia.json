@@ -8,9 +8,9 @@
     "usdc": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
     "aavePool": "0x8bAB6d1b75f19e9eD9fCe8b9BD338844fF79aE27",
     "compoundComet": "0xc3d688b66703497DAa19211E0b686300185341f5",
-    "riskRegistry": "0x63e689c4ea361d44f39aa08840e519c8a205cbc6",
-    "strategyRouter": "0x286988841f3b0577c59e9a3dde6ac9dc2a767cbb",
-    "vaultManager": "0x98779c21ce682cf143d10bf52cff9cfa1485476e",
-    "feeCollector": "0xd1544ec0bdcdceaa5fb03f3ef46e3584d546a17e"
+    "riskRegistry": "0x745936b6ec8e9037c042623029cd473b7ae01144",
+    "strategyRouter": "0xa75a715818aef85c3a5850cdf70c82c30c2487cd",
+    "vaultManager": "0x1694d4451cf9463f998773c343d42342445f43ec",
+    "feeCollector": "0x9fde5b14a0e164edb333843bf30b9f12da0f0841"
   }
 }

@@ -33,6 +33,8 @@ contract StrategyRouter is Ownable, ReentrancyGuard {
     address public vault;
     address public keeper;
     bool public demoMode = true;
+    uint256 public mockAaveAPYBps = 480;
+    uint256 public mockCompoundAPYBps = 610;
 
     uint256 public blocksPerYear = 2_628_000;
     uint256 public totalAaveManagedAssets;
@@ -43,6 +45,7 @@ contract StrategyRouter is Ownable, ReentrancyGuard {
     event VaultUpdated(address indexed vault);
     event KeeperUpdated(address indexed keeper);
     event DemoModeUpdated(bool enabled);
+    event MockApysUpdated(uint256 aaveAPYBps, uint256 compoundAPYBps);
     event ProtocolAddressesUpdated(address indexed aavePool, address indexed compoundToken);
     event UserFundsInvested(address indexed user, uint256 amount, uint256 toAave, uint256 toCompound);
     event UserFundsRedeemed(address indexed user, uint256 amount, uint256 fromAave, uint256 fromCompound);
@@ -106,17 +109,31 @@ contract StrategyRouter is Ownable, ReentrancyGuard {
         emit DemoModeUpdated(enabled);
     }
 
+    function setMockApys(uint256 aaveAPYBps, uint256 compoundAPYBps) external onlyOwner {
+        mockAaveAPYBps = aaveAPYBps;
+        mockCompoundAPYBps = compoundAPYBps;
+        emit MockApysUpdated(aaveAPYBps, compoundAPYBps);
+    }
+
     function setBlocksPerYear(uint256 newBlocksPerYear) external onlyOwner {
         require(newBlocksPerYear > 0, "blocksPerYear=0");
         blocksPerYear = newBlocksPerYear;
     }
 
     function getAaveAPY() public view returns (uint256 aaveAPYBps) {
+        if (demoMode) {
+            return mockAaveAPYBps;
+        }
+
         IAavePool.ReserveData memory reserveData = aavePool.getReserveData(address(assetToken));
         aaveAPYBps = uint256(reserveData.currentLiquidityRate) / AAVE_RAY_TO_BPS_DIVISOR;
     }
 
     function getCompoundAPY() public view returns (uint256 compoundAPYBps) {
+        if (demoMode) {
+            return mockCompoundAPYBps;
+        }
+
         uint256 ratePerBlock = compoundToken.supplyRatePerBlock();
         compoundAPYBps = (ratePerBlock * blocksPerYear * BPS_DENOMINATOR) / 1e18;
     }

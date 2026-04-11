@@ -7,7 +7,10 @@
     "build": "hardhat compile",
     "deploy:base-sepolia": "hardhat run --network baseSepolia scripts/deploy.ts",
     "mock:activity": "hardhat run --network baseSepolia scripts/mock-activity.ts",
-    "mock:deposit": "hardhat run --network baseSepolia scripts/mock-deposit.ts"
+    "mock:admin": "hardhat run --network baseSepolia scripts/mock-admin.ts",
+    "mock:deposit": "hardhat run --network baseSepolia scripts/mock-deposit.ts",
+    "mock:withdraw": "hardhat run --network baseSepolia scripts/mock-withdraw.ts",
+    "debug:deposit": "hardhat run --network baseSepolia scripts/debug-deposit.ts"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-viem": "^3.0.0",

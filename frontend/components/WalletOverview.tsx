@@ -18,7 +18,7 @@ export function WalletOverview() {
   });
 
   return (
-    <div className="surface-card p-5 transition duration-300 hover:scale-[1.01]">
+    <div className="surface-card h-full min-h-[10.5rem] p-5 transition duration-300 hover:scale-[1.01]">
       <h3 className="text-sm font-semibold text-brand-black">Wallet</h3>
       {!isConnected || !address ? (
         <p className="mt-4 text-sm text-neutral-600">

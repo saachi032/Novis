@@ -25,7 +25,7 @@ export function RiskAndFees() {
   const [faqOpen, setFaqOpen] = useState(false);
 
   return (
-    <div className="surface-card p-5 transition duration-300 hover:scale-[1.01]">
+    <div className="surface-card h-full min-h-[17rem] p-5 transition duration-300 hover:scale-[1.01]">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h3 className="text-sm font-semibold text-brand-black">Risk level</h3>

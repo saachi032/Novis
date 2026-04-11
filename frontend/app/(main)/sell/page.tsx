@@ -18,7 +18,7 @@ export default function SellPage() {
                         from the underlying lending venues automatically.
                     </p>
                     <div className="mt-10">
-                        <DepositWithdrawPanel defaultTab="withdraw" />
+                        <DepositWithdrawPanel variant="withdraw-only" />
                     </div>
                 </div>
             </section>

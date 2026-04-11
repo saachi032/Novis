@@ -1,12 +1,11 @@
 "use client";
 
-import { DotYieldChart } from "@/components/DotYieldChart";
 import { StatCard } from "@/components/StatCard";
 import { WalletOverview } from "@/components/WalletOverview";
 import { ProtocolAllocation } from "@/components/ProtocolAllocation";
-import { DepositWithdrawPanel } from "@/components/DepositWithdrawPanel";
 import { RiskAndFees } from "@/components/RiskAndFees";
 import { RebalanceTable } from "@/components/RebalanceTable";
+import { MarketplacePortfolio } from "@/components/marketplace/MarketplacePortfolio";
 
 export function DashboardSection() {
   return (
@@ -21,14 +20,18 @@ export function DashboardSection() {
           Marketplace
         </p>
         <h2 className="mt-3 text-center font-display text-3xl font-extrabold tracking-tight text-brand-black sm:text-4xl">
-          Vault dashboard
+          Your portfolio
         </h2>
         <p className="mx-auto mt-4 max-w-2xl text-center text-sm leading-relaxed text-neutral-600">
-          Live blended APY, allocation, and your position. Poll on-chain reads
-          every 5s once contracts are wired (wagmi + viem).
+          Track positions, yield, and returns. Use{" "}
+          <strong className="font-semibold text-brand-black">Buy</strong> to
+          deposit and <strong className="font-semibold text-brand-black">Sell &amp; Trade</strong>{" "}
+          to withdraw.
         </p>
 
-        <div className="mt-12 grid gap-5 lg:grid-cols-3">
+        <MarketplacePortfolio />
+
+        <div className="mt-12 grid items-stretch gap-5 lg:grid-cols-3">
           <WalletOverview />
           <StatCard
             label="Blended vault APY"
@@ -40,21 +43,7 @@ export function DashboardSection() {
             value="—"
             sub="Deposit USDC to mint vault shares (ERC-4626)"
           />
-        </div>
-
-        <div className="mt-8 grid gap-5 lg:grid-cols-12 lg:items-start">
-          <div className="lg:col-span-7">
-            <DotYieldChart />
-          </div>
-          <div className="space-y-5 lg:col-span-5">
-            <ProtocolAllocation />
-            <div id="buy-sell">
-              <DepositWithdrawPanel />
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-8 grid gap-5 lg:grid-cols-2">
+          <ProtocolAllocation />
           <RiskAndFees />
           <StatCard
             label="Automation status"

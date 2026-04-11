@@ -89,7 +89,7 @@ export function ConversionTicker() {
 
     if (isLoading) {
         return (
-            <div className="surface-card flex h-32 animate-pulse items-center justify-center p-6 bg-brand-gray/20">
+            <div className="surface-card flex min-h-[20rem] animate-pulse items-center justify-center bg-brand-gray/20 p-6">
                 <div className="h-6 w-32 rounded bg-brand-gray/40" />
             </div>
         );
@@ -97,14 +97,14 @@ export function ConversionTicker() {
 
     if (isError) {
         return (
-            <div className="surface-card flex h-32 items-center justify-center p-6 text-red-500 text-sm text-center">
+            <div className="surface-card flex min-h-[20rem] items-center justify-center p-6 text-center text-sm text-red-500">
                 Error loading rates: {error?.message.slice(0, 30)}...
             </div>
         );
     }
 
     return (
-        <div className="surface-card p-6 flex flex-col justify-center space-y-4 relative">
+        <div className="surface-card relative flex h-full min-h-[20rem] flex-col justify-between space-y-4 p-6">
             <div className="absolute top-4 right-4 flex items-center space-x-2 text-xs text-brand-black/50">
                 <div className="relative flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>

@@ -1,5 +1,5 @@
-import { StrategySection } from "@/components/StrategySection";
+import { FeaturesContent } from "@/components/features/FeaturesContent";
 
 export default function FeaturesPage() {
-    return <StrategySection />;
+  return <FeaturesContent />;
 }

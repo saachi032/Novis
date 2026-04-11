@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { useAccount, useWriteContract } from "wagmi";
+import { useAccount, useWriteContract, usePublicClient, useWaitForTransactionReceipt } from "wagmi";
 import { BASE_SEPOLIA_ADDRESSES } from "@/lib/contracts";
 import { VAULT_MANAGER_ABI } from "@/lib/abis/VaultManager";
 import { USDC_ABI } from "@/lib/abis/USDC";
@@ -10,19 +10,31 @@ import { parseUSDC } from "@/lib/utils/contractUtils";
  */
 export function useDeposit() {
   const { address } = useAccount();
-  const { writeContract, isPending } = useWriteContract();
+  const { writeContract, isPending, data: txHash } = useWriteContract();
+  const publicClient = usePublicClient();
   const [hash, setHash] = useState<string | null>(null);
   const [step, setStep] = useState<"idle" | "approving" | "depositing">("idle");
+  const [approveTxHash, setApproveTxHash] = useState<string | null>(null);
+  const [depositAmount, setDepositAmount] = useState<string>("");
+  
+  // Wait for approval to be mined
+  const { isLoading: isApproveConfirming } = useWaitForTransactionReceipt({
+    hash: approveTxHash ? (approveTxHash as `0x${string}`) : undefined,
+    query: {
+      enabled: !!approveTxHash,
+    },
+  });
 
   const depositIntoVault = useCallback(
     (amount: string) => {
       return new Promise<void>((resolve, reject) => {
-        if (!address) {
+        if (!address || !publicClient) {
           reject(new Error("Wallet not connected"));
           return;
         }
 
         const parsedAmount = parseUSDC(amount);
+        setDepositAmount(amount);
 
         // Step 1: Approve USDC spending
         setStep("approving");
@@ -32,32 +44,57 @@ export function useDeposit() {
             abi: USDC_ABI,
             functionName: "approve",
             args: [BASE_SEPOLIA_ADDRESSES.vaultManager, parsedAmount],
+            gas: BigInt(100000), // Approval doesn't need much gas
           },
           {
-            onSuccess: () => {
-              // Wait a moment for approval to settle, then deposit
-              setTimeout(() => {
-                setStep("depositing");
-                writeContract(
-                  {
-                    address: BASE_SEPOLIA_ADDRESSES.vaultManager,
-                    abi: VAULT_MANAGER_ABI,
-                    functionName: "deposit",
-                    args: [parsedAmount, address],
-                  },
-                  {
-                    onSuccess: (txHash) => {
-                      setHash(txHash);
-                      setStep("idle");
-                      resolve();
-                    },
-                    onError: (err) => {
-                      setStep("idle");
-                      reject(err);
-                    },
+            onSuccess: (approvHash) => {
+              setApproveTxHash(approvHash);
+              
+              // Wait for approval to be mined, then proceed with deposit
+              const waitInterval = setInterval(async () => {
+                try {
+                  const receipt = await publicClient.getTransactionReceipt({
+                    hash: approvHash,
+                  });
+
+                  if (receipt && receipt.status === "success") {
+                    clearInterval(waitInterval);
+                    
+                    // Approval confirmed! Now do deposit with safe gas limit
+                    setStep("depositing");
+                    writeContract(
+                      {
+                        address: BASE_SEPOLIA_ADDRESSES.vaultManager,
+                        abi: VAULT_MANAGER_ABI,
+                        functionName: "deposit",
+                        args: [parsedAmount, address],
+                        // Don't set explicit gas - let viem estimate it
+                        // This prevents gas limit errors on testnets
+                      },
+                      {
+                        onSuccess: (depositHash) => {
+                          setHash(depositHash);
+                          setStep("idle");
+                          resolve();
+                        },
+                        onError: (err) => {
+                          setStep("idle");
+                          reject(err);
+                        },
+                      }
+                    );
                   }
-                );
-              }, 1000);
+                } catch (err) {
+                  console.debug("Waiting for approval...");
+                }
+              }, 2000); // Check every 2 seconds
+
+              // Timeout after 60 seconds
+              setTimeout(() => {
+                clearInterval(waitInterval);
+                setStep("idle");
+                reject(new Error("Approval confirmation timeout"));
+              }, 60000);
             },
             onError: (err) => {
               setStep("idle");
@@ -67,7 +104,7 @@ export function useDeposit() {
         );
       });
     },
-    [address, writeContract]
+    [address, publicClient, writeContract]
   );
 
   return {

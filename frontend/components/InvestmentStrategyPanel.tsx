@@ -27,17 +27,19 @@ export function InvestmentStrategyPanel({
   investmentName,
 }: InvestmentStrategyPanelProps) {
   const { risk, duration, loadSettings, saveSettings } = useInvestmentSettings(investmentId);
-  const { setInvestmentStrategy, isLoading, error, success } = useSetInvestmentStrategy();
+  const { setInvestmentStrategy } = useSetInvestmentStrategy();
 
   const [localRisk, setLocalRisk] = useState<RiskLevel>(risk);
   const [localDuration, setLocalDuration] = useState<DurationKey>(duration);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     loadSettings();
   }, [loadSettings]);
 
   const handleApplyStrategy = async () => {
+    setIsLoading(true);
     try {
       await setInvestmentStrategy(investmentId, localRisk, localDuration);
       saveSettings(localRisk, localDuration);
@@ -45,6 +47,8 @@ export function InvestmentStrategyPanel({
       setTimeout(() => setShowSuccess(false), 3000);
     } catch (err) {
       console.error("Failed to update investment strategy:", err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -108,8 +112,7 @@ export function InvestmentStrategyPanel({
         {isLoading && (
           <p className="text-xs text-blue-600 animate-pulse">⏳ Updating strategy...</p>
         )}
-        {error && <p className="text-xs text-red-600">✗ {error}</p>}
-        {(success || showSuccess) && (
+        {showSuccess && (
           <p className="text-xs text-brand-green">✓ Strategy saved successfully</p>
         )}
       </div>

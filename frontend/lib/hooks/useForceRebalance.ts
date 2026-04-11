@@ -9,6 +9,7 @@ export function useForceRebalance() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   const { writeContract, isPending } = useWriteContract();
 
@@ -23,32 +24,68 @@ export function useForceRebalance() {
       setError(null);
       setSuccess(null);
       setTxHash(null);
+      setRetryCount(0);
 
+      // Send transaction without explicit gas limit
+      // Let viem estimate it naturally
       writeContract(
         {
           address: BASE_SEPOLIA_ADDRESSES.strategyRouter,
           abi: STRATEGY_ROUTER_ABI,
           functionName: "forceRebalance",
           args: [address as `0x${string}`],
+          // Don't set explicit gas - let viem estimate
         },
         {
           onSuccess: (hash) => {
-            setSuccess("Rebalance triggered successfully!");
+            setSuccess("Rebalance triggered successfully! Funds being reallocated...");
             setTxHash(hash);
             setIsLoading(false);
             resolve();
           },
           onError: (err) => {
-            const errorMsg =
-              err instanceof Error ? err.message : "Rebalance failed";
-            setError(errorMsg);
-            setIsLoading(false);
-            reject(new Error(errorMsg));
+            const errorMsg = err instanceof Error ? err.message : "Rebalance failed";
+            
+            // Check if it's a gas error and we haven't retried
+            if (errorMsg.includes("gas") && retryCount < 1) {
+              console.warn("Gas estimation issue, retrying...");
+              setRetryCount(prev => prev + 1);
+              
+              // Retry after 2 seconds
+              setTimeout(() => {
+                writeContract(
+                  {
+                    address: BASE_SEPOLIA_ADDRESSES.strategyRouter,
+                    abi: STRATEGY_ROUTER_ABI,
+                    functionName: "forceRebalance",
+                    args: [address as `0x${string}`],
+                  },
+                  {
+                    onSuccess: (retryHash) => {
+                      setSuccess("Rebalance triggered successfully! Funds being reallocated...");
+                      setTxHash(retryHash);
+                      setIsLoading(false);
+                      resolve();
+                    },
+                    onError: (retryErr) => {
+                      const retryMsg = retryErr instanceof Error ? retryErr.message : "Rebalance failed";
+                      setError(retryMsg);
+                      setIsLoading(false);
+                      reject(new Error(retryMsg));
+                    },
+                  }
+                );
+              }, 2000);
+            } else {
+              setError(errorMsg);
+              setIsLoading(false);
+              reject(new Error(errorMsg));
+            }
           },
         }
       );
     });
-  }, [address, writeContract]);
+  }, [address, writeContract, retryCount]);
 
   return {
     forceRebalance,
@@ -56,5 +93,6 @@ export function useForceRebalance() {
     error,
     success,
     txHash,
+    retryCount,
   };
 }

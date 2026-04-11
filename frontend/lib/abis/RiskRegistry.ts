@@ -4,8 +4,8 @@ export const RISK_REGISTRY_ABI = [
     name: 'setStrategy',
     stateMutability: 'nonpayable',
     inputs: [
-      { name: 'riskPercentage', type: 'uint256' },
-      { name: 'durationSeconds', type: 'uint256' },
+      { name: 'risk', type: 'uint8' },
+      { name: 'duration', type: 'uint8' },
     ],
     outputs: [],
   },
@@ -15,7 +15,7 @@ export const RISK_REGISTRY_ABI = [
     stateMutability: 'view',
     inputs: [{ name: 'user', type: 'address' }],
     outputs: [
-      { name: 'riskPercentage', type: 'uint256' },
+      { name: 'riskPercentage', type: 'uint8' },
       { name: 'durationSeconds', type: 'uint256' },
     ],
   },

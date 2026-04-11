@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { useAccount, useWriteContract, useReadContract } from "wagmi";
+import { useAccount, useWriteContract } from "wagmi";
 import { BASE_SEPOLIA_ADDRESSES } from "@/lib/contracts";
 import { RISK_REGISTRY_ABI } from "@/lib/abis/RiskRegistry";
 
@@ -12,6 +12,13 @@ export const RISK_PERCENTAGES = {
   aggressive: 80,
 } as const;
 
+// Map risk levels to RiskProfile enum values in contract (Low=0, Medium=1, High=2)
+export const RISK_TO_ENUM = {
+  conservative: 0, // Low
+  balanced: 1,     // Medium
+  aggressive: 2,   // High
+} as const;
+
 export const DURATION_OPTIONS = {
   daily: 24 * 60 * 60,
   weekly: 7 * 24 * 60 * 60,
@@ -20,16 +27,21 @@ export const DURATION_OPTIONS = {
   halfYearly: 180 * 24 * 60 * 60,
 } as const;
 
+// Map duration keys to CheckingDuration enum values in contract (Daily=0, Weekly=1, Monthly=2, Quarterly=3, HalfYearly=4)
+export const DURATION_TO_ENUM = {
+  daily: 0,      // Daily
+  weekly: 1,     // Weekly
+  monthly: 2,    // Monthly
+  quarterly: 3,  // Quarterly
+  halfYearly: 4, // HalfYearly
+} as const;
+
 /**
  * Hook to set strategy for a specific investment (position-specific, not global)
  */
 export function useSetInvestmentStrategy() {
   const { address } = useAccount();
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-
-  const { writeContract, isPending } = useWriteContract();
+  const { writeContract } = useWriteContract();
 
   const setInvestmentStrategy = useCallback(
     (investmentId: string, riskLevel: RiskLevel, durationKey: DurationKey) => {
@@ -39,37 +51,35 @@ export function useSetInvestmentStrategy() {
           return;
         }
 
-        setIsLoading(true);
-        setError(null);
-        setSuccess(null);
+        // Map risk level and duration to contract enum values
+        const riskEnum = RISK_TO_ENUM[riskLevel];
+        const durationEnum = DURATION_TO_ENUM[durationKey];
 
-        const riskPercentage = RISK_PERCENTAGES[riskLevel];
-        const durationSeconds = DURATION_OPTIONS[durationKey];
-
-        writeContract(
-          {
-            address: BASE_SEPOLIA_ADDRESSES.riskRegistry,
-            abi: RISK_REGISTRY_ABI,
-            functionName: "setStrategy",
-            args: [BigInt(riskPercentage), BigInt(durationSeconds)],
-          },
-          {
-            onSuccess: () => {
-              setSuccess(
-                `Investment strategy updated: ${riskLevel} risk, ${durationKey} checks`
-              );
-              setIsLoading(false);
-              resolve();
+        try {
+          writeContract(
+            {
+              address: BASE_SEPOLIA_ADDRESSES.riskRegistry,
+              abi: RISK_REGISTRY_ABI,
+              functionName: "setStrategy",
+              args: [riskEnum, durationEnum],
+              // Don't set explicit gas - let viem estimate it naturally
             },
-            onError: (err) => {
-              const errorMsg =
-                err instanceof Error ? err.message : "Failed to update strategy";
-              setError(errorMsg);
-              setIsLoading(false);
-              reject(new Error(errorMsg));
-            },
-          }
-        );
+            {
+              onSuccess: () => {
+                console.log("Strategy set successfully");
+                resolve();
+              },
+              onError: (err) => {
+                const errorMsg = err instanceof Error ? err.message : "Unknown error";
+                console.error("Strategy setting error:", errorMsg);
+                reject(new Error(errorMsg));
+              },
+            }
+          );
+        } catch (err) {
+          const errorMsg = err instanceof Error ? err.message : "Failed to set strategy";
+          reject(new Error(errorMsg));
+        }
       });
     },
     [address, writeContract]
@@ -77,9 +87,6 @@ export function useSetInvestmentStrategy() {
 
   return {
     setInvestmentStrategy,
-    isLoading: isLoading || isPending,
-    error,
-    success,
   };
 }
 

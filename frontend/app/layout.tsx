@@ -32,6 +32,7 @@ export default function RootLayout({
     <html lang="en">
       <body
         className={`${inter.variable} ${workSans.variable} min-h-screen bg-brand-bg font-body antialiased text-brand-black`}
+        suppressHydrationWarning
       >
         <Providers>{children}</Providers>
       </body>

@@ -4,9 +4,11 @@ import { useAccount } from "wagmi";
 import { StatCard } from "@/components/StatCard";
 import { WalletOverview } from "@/components/WalletOverview";
 import { ProtocolAllocation } from "@/components/ProtocolAllocation";
+import { ProtocolBreakdown } from "@/components/ProtocolBreakdown";
 import { RiskAndFees } from "@/components/RiskAndFees";
 import { CheckingDuration } from "@/components/CheckingDuration";
 import { RebalanceTable } from "@/components/RebalanceTable";
+import { InvestmentPortfolio } from "@/components/InvestmentPortfolio";
 import { MarketplacePortfolio } from "@/components/marketplace/MarketplacePortfolio";
 import { useVaultAPYs, useUserPositionValue } from "@/lib/hooks/useVaultData";
 import { useHydrated } from "@/lib/hooks/useHydrated";
@@ -38,6 +40,14 @@ export function DashboardSection() {
           to withdraw.
         </p>
 
+        {/* Individual Investments Section */}
+        <div className="mt-8">
+          <h3 className="text-center text-sm font-semibold uppercase tracking-[0.1em] text-brand-green mb-4">
+            Individual Investments
+          </h3>
+          <InvestmentPortfolio />
+        </div>
+
         <MarketplacePortfolio />
 
         {hydrated ? (
@@ -53,6 +63,7 @@ export function DashboardSection() {
               value={positionValue && positionValue !== "0" ? `$${Number(positionValue).toLocaleString(undefined, { maximumFractionDigits: 2 })}` : "—"}
               sub={positionLoading ? "Loading..." : "Deposit USDC to mint vault shares (ERC-4626)"}
             />
+            <ProtocolBreakdown />
             <ProtocolAllocation />
             <RiskAndFees />
             <CheckingDuration />
@@ -60,6 +71,7 @@ export function DashboardSection() {
         ) : (
           // Server render / loading skeleton
           <div className="mt-12 grid items-stretch gap-5 lg:grid-cols-3">
+            <div className="surface-card h-40 animate-pulse bg-neutral-100" />
             <div className="surface-card h-40 animate-pulse bg-neutral-100" />
             <div className="surface-card h-40 animate-pulse bg-neutral-100" />
             <div className="surface-card h-40 animate-pulse bg-neutral-100" />

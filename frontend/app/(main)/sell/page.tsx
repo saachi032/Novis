@@ -4,7 +4,9 @@ import { DepositWithdrawPanel } from "@/components/DepositWithdrawPanel";
 export default function SellPage() {
     return (
         <>
-            <StatsBalanceCards />
+            <div className="pt-8 sm:pt-12">
+                <StatsBalanceCards />
+            </div>
             <section className="px-4 pb-16 sm:px-6 sm:pb-24">
                 <div className="mx-auto max-w-xl">
                     <p className="text-center text-xs font-semibold uppercase tracking-[0.2em] text-brand-green">

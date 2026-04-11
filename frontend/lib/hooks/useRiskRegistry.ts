@@ -1,6 +1,7 @@
 import { useAccount, useReadContract, useWriteContract } from "wagmi";
 import { BASE_SEPOLIA_ADDRESSES } from "@/lib/contracts";
 import { RISK_REGISTRY_ABI } from "@/lib/abis/RiskRegistry";
+import { RISK_TO_ENUM, DURATION_TO_ENUM } from "./useInvestmentStrategy";
 import { useState, useCallback } from "react";
 
 // Duration constants (in seconds)
@@ -87,15 +88,15 @@ export function useSetStrategy() {
         setError(null);
         setSuccess(null);
 
-        const riskPercentage = RISK_PERCENTAGES[riskLevel];
-        const durationSeconds = DURATION_OPTIONS[durationKey];
+        const riskEnum = RISK_TO_ENUM[riskLevel];
+        const durationEnum = DURATION_TO_ENUM[durationKey];
 
         writeContract(
           {
             address: BASE_SEPOLIA_ADDRESSES.riskRegistry,
             abi: RISK_REGISTRY_ABI,
             functionName: "setStrategy",
-            args: [BigInt(riskPercentage), BigInt(durationSeconds)],
+            args: [riskEnum, durationEnum],
           },
           {
             onSuccess: () => {

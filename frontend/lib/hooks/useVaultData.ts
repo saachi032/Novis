@@ -33,7 +33,7 @@ export function useUserVaultShares(address?: string) {
     address: BASE_SEPOLIA_ADDRESSES.vaultManager,
     abi: VAULT_MANAGER_ABI,
     functionName: "balanceOf",
-    args: [address || "0x0000000000000000000000000000000000000000"],
+    args: address ? [address as `0x${string}`] : undefined,
     query: {
       enabled: !!address,
       refetchInterval: 10000,

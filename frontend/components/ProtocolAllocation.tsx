@@ -1,37 +1,45 @@
 "use client";
 
-const aavePct = 42;
-const compoundPct = 58;
+import { useVaultAPYs } from "@/lib/hooks/useVaultData";
+
+// Default allocation percentages (42% Aave, 58% Compound)
+const AAVE_PCT = 42;
+const COMPOUND_PCT = 58;
 
 export function ProtocolAllocation() {
+  const { aaveAPY, compoundAPY, isLoading } = useVaultAPYs();
+
+  const aaveRate = isLoading ? "—" : `${aaveAPY}%`;
+  const compoundRate = isLoading ? "—" : `${compoundAPY}%`;
+
   return (
     <div className="surface-card h-full min-h-[16rem] p-5 transition duration-300 hover:scale-[1.01]">
       <h3 className="text-sm font-semibold text-brand-black">Allocation</h3>
       <p className="mt-1 text-xs text-neutral-500">
-        Weighted by live APY (demo snapshot)
+        Weighted by current protocol APYs
       </p>
       <div className="mt-5 space-y-4">
         <div>
           <div className="mb-1 flex justify-between text-xs font-medium">
             <span className="text-neutral-600">Aave v3</span>
-            <span className="text-brand-black">{aavePct}%</span>
+            <span className="text-brand-black">{AAVE_PCT}%</span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-brand-gray/70">
             <div
               className="h-full rounded-full bg-brand-green"
-              style={{ width: `${aavePct}%` }}
+              style={{ width: `${AAVE_PCT}%` }}
             />
           </div>
         </div>
         <div>
           <div className="mb-1 flex justify-between text-xs font-medium">
             <span className="text-neutral-600">Compound v3</span>
-            <span className="text-brand-black">{compoundPct}%</span>
+            <span className="text-brand-black">{COMPOUND_PCT}%</span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-brand-gray/70">
             <div
               className="h-full rounded-full bg-brand-black"
-              style={{ width: `${compoundPct}%` }}
+              style={{ width: `${COMPOUND_PCT}%` }}
             />
           </div>
         </div>
@@ -42,7 +50,7 @@ export function ProtocolAllocation() {
             Aave APY
           </p>
           <p className="mt-1 font-display text-lg font-bold text-brand-black">
-            4.9%
+            {aaveRate}
           </p>
         </div>
         <div className="rounded-2xl border border-brand-gray/60 bg-brand-bg py-3">
@@ -50,7 +58,7 @@ export function ProtocolAllocation() {
             Compound APY
           </p>
           <p className="mt-1 font-display text-lg font-bold text-brand-black">
-            6.4%
+            {compoundRate}
           </p>
         </div>
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useAccount, useBalance } from "wagmi";
+import { useUserVaultShares, useTotalAssets } from "@/lib/hooks/useVaultData";
 
 const USDC_BASE =
   "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as const;
@@ -16,6 +17,8 @@ export function WalletOverview() {
     token: USDC_BASE,
     query: { enabled: !!address },
   });
+  const { shares } = useUserVaultShares(address);
+  const { totalAssets } = useTotalAssets();
 
   return (
     <div className="surface-card h-full min-h-[10.5rem] p-5 transition duration-300 hover:scale-[1.01]">
@@ -46,9 +49,25 @@ export function WalletOverview() {
           </div>
           <div>
             <dt className="text-xs font-medium text-neutral-500">
-              Share price (demo)
+              Vault shares
             </dt>
-            <dd className="mt-1 font-medium text-brand-black">$1.024</dd>
+            <dd className="mt-1 font-medium text-brand-black">
+              {shares && shares !== "0"
+                ? `${Number(shares).toLocaleString(undefined, {
+                    maximumFractionDigits: 4,
+                  })}`
+                : "No shares"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium text-neutral-500">
+              Total vault assets
+            </dt>
+            <dd className="mt-1 font-medium text-brand-black">
+              ${Number(totalAssets).toLocaleString(undefined, {
+                maximumFractionDigits: 2,
+              })}
+            </dd>
           </div>
         </dl>
       )}

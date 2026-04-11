@@ -1,13 +1,19 @@
 "use client";
 
+import { useAccount } from "wagmi";
 import { StatCard } from "@/components/StatCard";
 import { WalletOverview } from "@/components/WalletOverview";
 import { ProtocolAllocation } from "@/components/ProtocolAllocation";
 import { RiskAndFees } from "@/components/RiskAndFees";
 import { RebalanceTable } from "@/components/RebalanceTable";
 import { MarketplacePortfolio } from "@/components/marketplace/MarketplacePortfolio";
+import { useVaultAPYs, useUserPositionValue } from "@/lib/hooks/useVaultData";
 
 export function DashboardSection() {
+  const { address } = useAccount();
+  const { blendedAPY, isLoading: apyLoading } = useVaultAPYs();
+  const { positionValue, isLoading: positionLoading } = useUserPositionValue(address);
+
   return (
     <section
       id="dashboard"
@@ -35,13 +41,13 @@ export function DashboardSection() {
           <WalletOverview />
           <StatCard
             label="Blended vault APY"
-            value="5.82%"
-            sub="Last rebalance 14h ago · net-positive vs gas"
+            value={`${blendedAPY}%`}
+            sub={apyLoading ? "Loading..." : "Weighted by protocol allocation"}
           />
           <StatCard
             label="Your position"
-            value="—"
-            sub="Deposit USDC to mint vault shares (ERC-4626)"
+            value={positionValue && positionValue !== "0" ? `$${Number(positionValue).toLocaleString(undefined, { maximumFractionDigits: 2 })}` : "—"}
+            sub={positionLoading ? "Loading..." : "Deposit USDC to mint vault shares (ERC-4626)"}
           />
           <ProtocolAllocation />
           <RiskAndFees />

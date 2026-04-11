@@ -1,0 +1,16 @@
+{
+  "network": "baseSepolia",
+  "deployer": "0x73Fa5dBc79e5e9c46C2ce74763F697B6b7C8fD7a",
+  "initialOwner": "0x73Fa5dBc79e5e9c46C2ce74763F697B6b7C8fD7a",
+  "treasuryAddress": "0x73Fa5dBc79e5e9c46C2ce74763F697B6b7C8fD7a",
+  "addresses": {
+    "usdc": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "aavePool": "0x8bAB6d1b75f19e9eD9fCe8b9BD338844fF79aE27",
+    "compoundComet": "0xc3d688b66703497DAa19211E0b686300185341f5",
+    "riskRegistry": "0x2444b744dcd79e5382f7447bcf829a9a33a1ecfa",
+    "strategyRouter": "0x500a9ac2d88ad4504f93e6fb3fabd8efc3da726f",
+    "vaultManager": "0x67f1fee31a6c8e76b843626e005b68a39092d4ac",
+    "feeCollector": "0x3968784c67c75e45b314101d319f20dbd8821fdf",
+    "rebalanceExecutor": "0xd7e9443f53ac73bb8d7d9a12a98e455e4017a65e"
+  }
+}

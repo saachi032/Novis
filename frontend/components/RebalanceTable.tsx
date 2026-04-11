@@ -3,6 +3,7 @@
 import { useAccount } from "wagmi";
 import { useForceRebalance } from "@/lib/hooks/useForceRebalance";
 import { useState } from "react";
+import { useHydrated } from "@/lib/hooks/useHydrated";
 
 const rows = [
   {
@@ -29,6 +30,7 @@ const rows = [
 ];
 
 export function RebalanceTable() {
+  const hydrated = useHydrated();
   const { address, isConnected } = useAccount();
   const { forceRebalance, isLoading, error, success, txHash } = useForceRebalance();
   const [showSuccess, setShowSuccess] = useState(false);
@@ -61,7 +63,7 @@ export function RebalanceTable() {
         <div className="flex flex-col gap-2">
           <button
             onClick={handleForceRebalance}
-            disabled={!isConnected || isLoading}
+            disabled={!hydrated || !isConnected || isLoading}
             className="inline-flex items-center gap-2 rounded-lg bg-brand-green px-4 py-2 text-xs font-semibold text-white transition hover:bg-brand-green/90 disabled:bg-neutral-300 disabled:text-neutral-600 disabled:cursor-not-allowed"
           >
             {isLoading ? "Processing..." : "Force Rebalance"}

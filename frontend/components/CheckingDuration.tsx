@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useAccount } from "wagmi";
 import { useUserStrategy, useSetStrategy, DURATION_OPTIONS, type DurationKey } from "@/lib/hooks/useRiskRegistry";
+import { useHydrated } from "@/lib/hooks/useHydrated";
 
 const durations = [
   {
@@ -37,8 +38,9 @@ interface CheckingDurationProps {
 }
 
 export function CheckingDuration({ currentRisk }: CheckingDurationProps) {
+  const hydrated = useHydrated();
   const { address } = useAccount();
-  const { duration: savedDuration, riskLevel } = useUserStrategy(address);
+  const { duration: savedDuration, riskLevel } = useUserStrategy(hydrated ? address : undefined);
   const { setStrategy, isLoading, error, success } = useSetStrategy();
   
   const [duration, setDuration] = useState<DurationKey>(savedDuration);

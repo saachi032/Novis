@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useAccount } from "wagmi";
 import { useUserStrategy, useSetStrategy, type RiskLevel, DURATION_OPTIONS } from "@/lib/hooks/useRiskRegistry";
+import { useHydrated } from "@/lib/hooks/useHydrated";
 
 const levels = [
   {
@@ -23,8 +24,9 @@ const levels = [
 ];
 
 export function RiskAndFees() {
+  const hydrated = useHydrated();
   const { address } = useAccount();
-  const { riskLevel: savedRisk, duration } = useUserStrategy(address);
+  const { riskLevel: savedRisk, duration } = useUserStrategy(hydrated ? address : undefined);
   const { setStrategy, isLoading, error, success } = useSetStrategy();
   
   const [risk, setRisk] = useState<RiskLevel>(savedRisk);

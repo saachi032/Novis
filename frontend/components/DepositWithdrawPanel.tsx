@@ -52,8 +52,9 @@ export function DepositWithdrawPanel({
 
       {/* Tab Content */}
       <div>
-        {(effectiveTab === "deposit" || !showTabs) && <DepositPanel />}
-        {effectiveTab === "withdraw" && showTabs && <WithdrawPanel />}
+        {(effectiveTab === "deposit" && showTabs) && <DepositPanel />}
+        {variant === "deposit-only" && <DepositPanel />}
+        {(effectiveTab === "withdraw" && showTabs) && <WithdrawPanel />}
         {variant === "withdraw-only" && <WithdrawPanel />}
       </div>
     </div>

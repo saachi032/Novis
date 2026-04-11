@@ -1,16 +1,18 @@
 "use client";
 
 import { useVaultAPYs } from "@/lib/hooks/useVaultData";
+import { useHydrated } from "@/lib/hooks/useHydrated";
 
 // Default allocation percentages (42% Aave, 58% Compound)
 const AAVE_PCT = 42;
 const COMPOUND_PCT = 58;
 
 export function ProtocolAllocation() {
+  const hydrated = useHydrated();
   const { aaveAPY, compoundAPY, isLoading } = useVaultAPYs();
 
-  const aaveRate = isLoading ? "—" : `${aaveAPY}%`;
-  const compoundRate = isLoading ? "—" : `${compoundAPY}%`;
+  const aaveRate = !hydrated || isLoading ? "—" : `${aaveAPY}%`;
+  const compoundRate = !hydrated || isLoading ? "—" : `${compoundAPY}%`;
 
   return (
     <div className="surface-card h-full min-h-[16rem] p-5 transition duration-300 hover:scale-[1.01]">

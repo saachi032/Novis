@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { useAccount } from "wagmi";
 import { useTotalAssets, useUserVaultShares, useVaultAPYs, useUserPositionValue } from "@/lib/hooks/useVaultData";
+import { useHydrated } from "@/lib/hooks/useHydrated";
 
 function formatUsd(n: number) {
   return new Intl.NumberFormat("en-US", {
@@ -15,6 +16,7 @@ function formatUsd(n: number) {
 }
 
 export function MarketplacePortfolio() {
+  const hydrated = useHydrated();
   const { address } = useAccount();
   const { totalAssets } = useTotalAssets();
   const { shares } = useUserVaultShares(address);
@@ -41,6 +43,30 @@ export function MarketplacePortfolio() {
       avgApy,
     };
   }, [positionValue, shareBigInt, blendedAPY]);
+
+  // Don't render hook-dependent content until after hydration
+  if (!hydrated) {
+    return (
+      <div className="mt-10 grid items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="surface-card flex h-full min-h-[7.75rem] flex-col justify-between p-4 animate-pulse">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-500">Total vault assets</p>
+          <p className="mt-1 w-20 h-6 bg-neutral-200 rounded"></p>
+        </div>
+        <div className="surface-card flex h-full min-h-[7.75rem] flex-col justify-between p-4 animate-pulse">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-500">Your position</p>
+          <p className="mt-1 w-20 h-6 bg-neutral-200 rounded"></p>
+        </div>
+        <div className="surface-card flex h-full min-h-[7.75rem] flex-col justify-between p-4 animate-pulse">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-500">Your yield</p>
+          <p className="mt-1 w-20 h-6 bg-neutral-200 rounded"></p>
+        </div>
+        <div className="surface-card flex h-full min-h-[7.75rem] flex-col justify-between p-4 animate-pulse">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-500">Blended APY</p>
+          <p className="mt-1 w-20 h-6 bg-neutral-200 rounded"></p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -105,7 +131,7 @@ export function MarketplacePortfolio() {
                 </tr>
               </thead>
               <tbody>
-                <tr className="border-b border-brand-gray/40 transition-colors hover:bg-brand-bg/60">
+                <tr className="border-b border-brand-gray/40 transition-colors hover:bg-brand-bg/80 cursor-pointer" onClick={() => window.location.href = '/marketplace/vault-usdc'}>
                   <td className="px-4 py-3">
                     <div className="text-left font-semibold text-brand-black">
                       Novis USDC Vault

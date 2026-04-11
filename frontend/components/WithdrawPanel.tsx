@@ -4,8 +4,10 @@ import { useState } from "react";
 import { useAccount } from "wagmi";
 import { useUserVaultShares } from "@/lib/hooks/useVaultData";
 import { useWithdraw } from "@/lib/hooks/useDepositWithdraw";
+import { useHydrated } from "@/lib/hooks/useHydrated";
 
 export function WithdrawPanel() {
+  const hydrated = useHydrated();
   const { address, isConnected } = useAccount();
   const { shares } = useUserVaultShares(address);
   const { withdraw, isLoading, hash } = useWithdraw();
@@ -51,35 +53,69 @@ export function WithdrawPanel() {
   };
 
   const maxWithdrawable = withdrawType === "shares" ? shareBigInt : shareBigInt;
-
-  if (!isConnected) {
-    return (
-      <div className="surface-card rounded-2xl p-6">
-        <h3 className="font-display text-lg font-bold text-brand-black">Withdraw USDC</h3>
-        <p className="mt-2 text-sm text-neutral-600">
-          Connect your wallet on Base Sepolia to withdraw.
-        </p>
-      </div>
-    );
-  }
-
-  if (shareBigInt === 0) {
-    return (
-      <div className="surface-card rounded-2xl p-6">
-        <h3 className="font-display text-lg font-bold text-brand-black">Withdraw USDC</h3>
-        <p className="mt-2 text-sm text-neutral-600">
-          You don&apos;t have any vault shares yet. Deposit USDC to earn yield.
-        </p>
-      </div>
-    );
-  }
+  
+  // Always render the same structure - avoid hydration mismatch
+  const showNoSharesMessage = hydrated && shareBigInt === 0;
+  const showDisconnectMessage = hydrated && !isConnected;
 
   return (
     <div className="surface-card rounded-2xl p-6">
+      {/* Wallet Connection Banner */}
+      {showDisconnectMessage && (
+        <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-4">
+          <p className="text-sm font-semibold text-amber-900">
+            Connect your wallet on Base Sepolia to withdraw
+          </p>
+        </div>
+      )}
+
+      {/* No Shares Banner */}
+      {showNoSharesMessage && (
+        <div className="mb-4 rounded-lg border border-blue-300 bg-blue-50 p-4">
+          <p className="text-sm font-semibold text-blue-900">
+            You don&apos;t have any vault shares yet. Deposit USDC to earn yield.
+          </p>
+        </div>
+      )}
+
       <h3 className="font-display text-lg font-bold text-brand-black">Withdraw USDC</h3>
       <p className="mt-1 text-xs text-neutral-500">
         Redeem your vault shares for USDC
-      </p>.
+      </p>
+
+      <div className="mt-6 space-y-4">
+        {/* Withdraw Type Selector */}
+        <div>
+          <label className="block text-xs font-semibold text-neutral-600 mb-2">
+            Withdraw Type
+          </label>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setWithdrawType("shares")}
+              disabled={showDisconnectMessage}
+              className={`px-3 py-2 rounded-lg text-xs font-semibold transition ${
+                withdrawType === "shares"
+                  ? "bg-brand-green text-brand-black"
+                  : "border border-brand-gray/60 text-brand-black hover:bg-brand-bg"
+              } disabled:bg-neutral-100 disabled:text-neutral-500`}
+            >
+              Shares
+            </button>
+            <button
+              onClick={() => setWithdrawType("usd")}
+              disabled={showDisconnectMessage}
+              className={`px-3 py-2 rounded-lg text-xs font-semibold transition ${
+                withdrawType === "usd"
+                  ? "bg-brand-green text-brand-black"
+                  : "border border-brand-gray/60 text-brand-black hover:bg-brand-bg"
+              } disabled:bg-neutral-100 disabled:text-neutral-500`}
+            >
+              USDC
+            </button>
+          </div>
+        </div>
+        Redeem your vault shares for USDC
+      </div>
 
       <div className="mt-6 space-y-4">
         {/* Withdraw Type Toggle */}
@@ -125,11 +161,13 @@ export function WithdrawPanel() {
               value={withdrawAmount}
               onChange={handleWithdrawAmountChange}
               placeholder="0.00"
-              className="flex-1 rounded-lg border border-brand-gray/60 bg-white px-4 py-3 text-sm font-mono text-brand-black placeholder:text-neutral-400 focus:border-brand-green focus:outline-none focus:ring-1 focus:ring-brand-green"
+              disabled={showDisconnectMessage || showNoSharesMessage}
+              className="flex-1 rounded-lg border border-brand-gray/60 bg-white px-4 py-3 text-sm font-mono text-brand-black placeholder:text-neutral-400 focus:border-brand-green focus:outline-none focus:ring-1 focus:ring-brand-green disabled:bg-neutral-100 disabled:text-neutral-500"
             />
             <button
               onClick={() => setWithdrawAmount(maxWithdrawable.toString())}
-              className="rounded-lg border border-brand-gray/60 px-3 py-3 text-xs font-semibold text-brand-black hover:bg-brand-bg"
+              disabled={showDisconnectMessage || showNoSharesMessage}
+              className="rounded-lg border border-brand-gray/60 px-3 py-3 text-xs font-semibold text-brand-black hover:bg-brand-bg disabled:bg-neutral-100 disabled:text-neutral-500"
             >
               Max
             </button>
@@ -173,7 +211,7 @@ export function WithdrawPanel() {
         {/* Withdraw Button */}
         <button
           onClick={handleWithdraw}
-          disabled={isLoading || !withdrawAmount || parseFloat(withdrawAmount) <= 0}
+          disabled={isLoading || !withdrawAmount || parseFloat(withdrawAmount) <= 0 || showDisconnectMessage || showNoSharesMessage}
           className="w-full rounded-lg bg-red-500 py-3 font-semibold text-white transition hover:bg-red-600 disabled:bg-neutral-300 disabled:text-neutral-600 disabled:cursor-not-allowed"
         >
           {isLoading ? "Processing..." : "Withdraw USDC"}

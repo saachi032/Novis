@@ -9,8 +9,10 @@ import { CheckingDuration } from "@/components/CheckingDuration";
 import { RebalanceTable } from "@/components/RebalanceTable";
 import { MarketplacePortfolio } from "@/components/marketplace/MarketplacePortfolio";
 import { useVaultAPYs, useUserPositionValue } from "@/lib/hooks/useVaultData";
+import { useHydrated } from "@/lib/hooks/useHydrated";
 
 export function DashboardSection() {
+  const hydrated = useHydrated();
   const { address } = useAccount();
   const { blendedAPY, isLoading: apyLoading } = useVaultAPYs();
   const { positionValue, isLoading: positionLoading } = useUserPositionValue(address);
@@ -38,26 +40,42 @@ export function DashboardSection() {
 
         <MarketplacePortfolio />
 
-        <div className="mt-12 grid items-stretch gap-5 lg:grid-cols-3">
-          <WalletOverview />
-          <StatCard
-            label="Blended vault APY"
-            value={`${blendedAPY}%`}
-            sub={apyLoading ? "Loading..." : "Weighted by protocol allocation"}
-          />
-          <StatCard
-            label="Your position"
-            value={positionValue && positionValue !== "0" ? `$${Number(positionValue).toLocaleString(undefined, { maximumFractionDigits: 2 })}` : "—"}
-            sub={positionLoading ? "Loading..." : "Deposit USDC to mint vault shares (ERC-4626)"}
-          />
-          <ProtocolAllocation />
-          <RiskAndFees />
-          <CheckingDuration />
-        </div>
+        {hydrated ? (
+          <div className="mt-12 grid items-stretch gap-5 lg:grid-cols-3">
+            <WalletOverview />
+            <StatCard
+              label="Blended vault APY"
+              value={`${blendedAPY}%`}
+              sub={apyLoading ? "Loading..." : "Weighted by protocol allocation"}
+            />
+            <StatCard
+              label="Your position"
+              value={positionValue && positionValue !== "0" ? `$${Number(positionValue).toLocaleString(undefined, { maximumFractionDigits: 2 })}` : "—"}
+              sub={positionLoading ? "Loading..." : "Deposit USDC to mint vault shares (ERC-4626)"}
+            />
+            <ProtocolAllocation />
+            <RiskAndFees />
+            <CheckingDuration />
+          </div>
+        ) : (
+          // Server render / loading skeleton
+          <div className="mt-12 grid items-stretch gap-5 lg:grid-cols-3">
+            <div className="surface-card h-40 animate-pulse bg-neutral-100" />
+            <div className="surface-card h-40 animate-pulse bg-neutral-100" />
+            <div className="surface-card h-40 animate-pulse bg-neutral-100" />
+            <div className="surface-card h-40 animate-pulse bg-neutral-100" />
+            <div className="surface-card h-40 animate-pulse bg-neutral-100" />
+            <div className="surface-card h-40 animate-pulse bg-neutral-100" />
+          </div>
+        )}
 
-        <div className="mt-8">
-          <RebalanceTable />
-        </div>
+        {hydrated ? (
+          <div className="mt-8">
+            <RebalanceTable />
+          </div>
+        ) : (
+          <div className="mt-8 h-64 animate-pulse bg-neutral-100 rounded-2xl" />
+        )}
       </div>
     </section>
   );

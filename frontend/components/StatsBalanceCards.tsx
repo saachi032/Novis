@@ -1,9 +1,10 @@
 "use client";
 
 import { useAccount, useBalance } from "wagmi";
+import { useHydrated } from "@/lib/hooks/useHydrated";
+import { BASE_SEPOLIA_ADDRESSES } from "@/lib/contracts";
 
-const USDT_BASE =
-  "0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2" as const;
+const USDC_ADDRESS = BASE_SEPOLIA_ADDRESSES.usdc;
 
 function CoinIcon({ label }: { label: string }) {
   return (
@@ -18,8 +19,11 @@ function CoinIcon({ label }: { label: string }) {
 
 function formatBal(
   data: { formatted: string; symbol: string } | undefined,
-  connected: boolean
+  connected: boolean,
+  hydrated: boolean
 ) {
+  // Before hydration, always show "—" to match server render
+  if (!hydrated) return "—";
   if (!connected) return "—";
   if (!data) return "…";
   return `${Number(data.formatted).toLocaleString(undefined, {
@@ -28,30 +32,31 @@ function formatBal(
 }
 
 export function StatsBalanceCards() {
+  const hydrated = useHydrated();
   const { address, isConnected } = useAccount();
-  const { data: usdtBal } = useBalance({
-    address,
-    token: USDT_BASE,
-    query: { enabled: !!address },
+  const { data: usdcBal } = useBalance({
+    address: hydrated ? address : undefined,
+    token: USDC_ADDRESS as `0x${string}`,
+    query: { enabled: hydrated && !!address },
   });
   const { data: ethBal } = useBalance({
-    address,
-    query: { enabled: !!address },
+    address: hydrated ? address : undefined,
+    query: { enabled: hydrated && !!address },
   });
 
   return (
     <section className="px-4 pb-14 sm:px-6 sm:pb-20" aria-label="Balances">
       <div className="mx-auto flex max-w-6xl flex-col gap-4 sm:flex-row sm:gap-5">
         <div className="surface-card flex flex-1 items-center gap-5 p-6 transition duration-300 hover:scale-[1.02]">
-          <CoinIcon label="₮" />
+          <CoinIcon label="💵" />
           <div className="min-w-0">
             <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
-              USDT balance
+              USDC balance
             </p>
             <p className="mt-1 truncate font-display text-2xl font-bold tracking-tight text-brand-black sm:text-3xl">
-              {formatBal(usdtBal, isConnected)}
+              {formatBal(usdcBal, isConnected, hydrated)}
             </p>
-            <p className="mt-1 text-xs text-neutral-500">Base network</p>
+            <p className="mt-1 text-xs text-neutral-500">Base Sepolia</p>
           </div>
         </div>
         <div className="surface-card flex flex-1 items-center gap-5 p-6 transition duration-300 hover:scale-[1.02]">
@@ -61,9 +66,9 @@ export function StatsBalanceCards() {
               Ethereum balance
             </p>
             <p className="mt-1 truncate font-display text-2xl font-bold tracking-tight text-brand-black sm:text-3xl">
-              {formatBal(ethBal, isConnected)}
+              {formatBal(ethBal, isConnected, hydrated)}
             </p>
-            <p className="mt-1 text-xs text-neutral-500">Native gas token</p>
+            <p className="mt-1 text-xs text-neutral-500">Base Sepolia (gas token)</p>
           </div>
         </div>
       </div>

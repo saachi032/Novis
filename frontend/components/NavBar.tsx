@@ -39,6 +39,11 @@ const links = [
 export function NavBar() {
   const pathname = usePathname();
 
+  const isActive = (href: string) =>
+    href === "/marketplace"
+      ? pathname === href || pathname.startsWith("/marketplace/")
+      : pathname === href;
+
   return (
     <header className="sticky top-0 z-50 border-b border-brand-gray/60 bg-white/85 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:h-[4.25rem] sm:px-6">
@@ -60,7 +65,7 @@ export function NavBar() {
             <Link
               key={l.href}
               href={l.href}
-              className={`text-sm font-medium transition duration-300 hover:text-brand-black ${pathname === l.href
+              className={`text-sm font-medium transition duration-300 hover:text-brand-black ${isActive(l.href)
                 ? "text-brand-black underline underline-offset-4 decoration-brand-green decoration-2"
                 : "text-neutral-600"
                 }`}
@@ -80,7 +85,7 @@ export function NavBar() {
                 <Link
                   key={`${l.href}-m`}
                   href={l.href}
-                  className={`block rounded-xl px-3 py-2.5 text-sm transition duration-300 hover:bg-brand-bg ${pathname === l.href
+                  className={`block rounded-xl px-3 py-2.5 text-sm transition duration-300 hover:bg-brand-bg ${isActive(l.href)
                     ? "font-semibold text-brand-black"
                     : "text-neutral-700"
                     }`}

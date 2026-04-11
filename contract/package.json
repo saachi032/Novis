@@ -4,12 +4,14 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "build": "hardhat compile"
+    "build": "hardhat compile",
+    "deploy:base-sepolia": "hardhat run --network baseSepolia scripts/deploy.ts"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-viem": "^3.0.0",
     "@openzeppelin/contracts": "^5.2.0",
     "@types/node": "^24.0.0",
+    "dotenv": "^17.2.3",
     "hardhat": "^3.3.0",
     "typescript": "^5.8.0",
     "viem": "^2.43.0"

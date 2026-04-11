@@ -21,7 +21,7 @@ export default function BuyPage() {
                         yield.
                     </p>
                     <div className="mt-10">
-                        <DepositWithdrawPanel defaultTab="deposit" />
+                        <DepositWithdrawPanel variant="deposit-only" />
                     </div>
                 </div>
             </section>

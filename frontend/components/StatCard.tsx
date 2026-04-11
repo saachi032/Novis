@@ -12,7 +12,7 @@ export function StatCard({
   state?: StatState;
 }) {
   return (
-    <div className="surface-card p-5 transition duration-300 hover:scale-[1.01]">
+    <div className="surface-card flex h-full min-h-[10.5rem] flex-col justify-between p-5 transition duration-300 hover:scale-[1.01]">
       <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
         {label}
       </p>

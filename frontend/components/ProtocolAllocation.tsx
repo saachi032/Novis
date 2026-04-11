@@ -5,7 +5,7 @@ const compoundPct = 58;
 
 export function ProtocolAllocation() {
   return (
-    <div className="surface-card p-5 transition duration-300 hover:scale-[1.01]">
+    <div className="surface-card h-full min-h-[16rem] p-5 transition duration-300 hover:scale-[1.01]">
       <h3 className="text-sm font-semibold text-brand-black">Allocation</h3>
       <p className="mt-1 text-xs text-neutral-500">
         Weighted by live APY (demo snapshot)

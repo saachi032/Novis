@@ -66,7 +66,7 @@ function LineChart({ series }: { series: ApiStrategy[] }) {
           strokeLinecap="round"
         />
       ))}
-      <g stroke="#0f172a" strokeWidth="1">
+      <g stroke="#e5e7eb" strokeWidth="1">
         {[0, 1, 2, 3].map((row) => (
           <line
             key={row}
@@ -147,30 +147,29 @@ export function BacktestSimulator({ initialCapital = 1000 }: { initialCapital?: 
   const chartData = payload?.strategies ?? [];
 
   return (
-    <div className="w-full rounded-[32px] bg-gradient-to-br from-[#111827] to-[#0f172a] p-6 shadow-[0_20px_60px_rgba(15,23,42,0.65)]">
+    <div className="w-full rounded-[32px] bg-white border border-neutral-200 p-6 shadow-sm">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-sm uppercase tracking-[0.3em] text-brand-green">USDC optimizer</p>
-          <h2 className="text-3xl font-bold text-white">Aave v3 ↔ Morpho v1</h2>
-          <p className="mt-1 max-w-2xl text-sm text-white/80">
+          <h2 className="text-3xl font-bold text-brand-black">Aave v3 ↔ Morpho v1</h2>
+          <p className="mt-1 max-w-2xl text-sm text-neutral-600">
             Live manifest from <span className="font-medium text-brand-white">defiyeildpool.json</span>. The
             backtest reruns each time you change the capital or rebalance settings.
           </p>
         </div>
         <form className="flex w-full flex-col gap-2 md:w-auto" onSubmit={handleSubmit}>
-          <label className="text-sm text-white/70">Starting capital (USD)</label>
+          <label className="text-sm text-neutral-600">Starting capital (USD)</label>
           <div className="flex gap-2">
             <input
               type="number"
               min={100}
               step={50}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-white placeholder:text-white/40 focus:border-brand-green focus:outline-none"
-              value={draftCapital}
+              className="w-full rounded-xl border border-neutral-200 bg-white px-4 py-2 text-brand-black placeholder:text-neutral-400 focus:border-brand-green focus:outline-none" value={draftCapital}
               onChange={(event) => setDraftCapital(event.target.value)}
             />
             <button
               type="submit"
-              className="rounded-xl bg-brand-green px-4 py-2 text-sm font-semibold uppercase tracking-wide text-white transition hover:bg-brand-green/80"
+              className="rounded-xl bg-brand-green px-4 py-2 text-sm font-semibold uppercase tracking-wide text-white transition hover:opacity-90"
             >
               Re-run
             </button>
@@ -178,23 +177,22 @@ export function BacktestSimulator({ initialCapital = 1000 }: { initialCapital?: 
         </form>
       </div>
 
-      <div className="mt-6 rounded-3xl border border-white/5 bg-white/5 p-4">
-        {loading && (
-          <div className="flex h-56 items-center justify-center text-sm text-white/60">running simulation...</div>
-        )}
+      <div className="mt-6 rounded-3xl border border-neutral-200 bg-white p-4">        {loading && (
+        <div className="flex h-56 items-center justify-center text-sm text-white/60">running simulation...</div>
+      )}
         {error && (
           <div className="flex h-56 items-center justify-center text-sm text-red-400">{error}</div>
         )}
         {!loading && !error && chartData.length > 0 && (
           <div className="space-y-6">
-            <div className="rounded-2xl bg-[#0f172a] p-4">
+            <div className="rounded-2xl bg-brand-light p-4">
               <LineChart series={chartData} />
             </div>
             <div className="grid gap-4 md:grid-cols-3">
               {chartData.map((strategy) => (
                 <div
                   key={strategy.label}
-                  className="rounded-2xl border border-white/10 bg-white/5 p-4 text-white"
+                  className="rounded-2xl border border-neutral-200 bg-white p-4 text-brand-black"
                 >
                   <p className="text-sm uppercase tracking-[0.3em] text-white/60">
                     {strategy.label.replace("static-", "").toUpperCase()}
@@ -209,16 +207,16 @@ export function BacktestSimulator({ initialCapital = 1000 }: { initialCapital?: 
             </div>
             {summary && (
               <div className="grid gap-4 md:grid-cols-3">
-                <div className="rounded-2xl border border-brand-green/30 bg-brand-green/10 p-4 text-brand-green">
+                <div className="rounded-2xl border border-brand-green/30 bg-brand-light p-4 text-brand-green">
                   <p className="text-sm uppercase tracking-[0.3em]">Projected gain</p>
                   <p className="mt-1 text-2xl font-semibold">{formatPercent(summary.profitPct)}</p>
                   <p className="text-xs text-white/60">after 30-day simulated window</p>
                 </div>
-                <div className="rounded-2xl border border-brand-white/10 bg-white/5 p-4 text-white">
-                  <p className="text-sm text-white/60">APY • Aave v3</p>
+                <div className="rounded-2xl border border-neutral-200 bg-white p-4 text-brand-black">
+                   <p className="text-sm text-white/60">APY • Aave v3</p>
                   <p className="text-xl font-semibold">{formatPercent((payload?.apys.aave ?? 0) * 100)}</p>
                 </div>
-                <div className="rounded-2xl border border-brand-white/10 bg-white/5 p-4 text-white">
+                <div className="rounded-2xl border border-neutral-200 bg-white p-4 text-brand-black">
                   <p className="text-sm text-white/60">APY • Morpho v1</p>
                   <p className="text-xl font-semibold">{formatPercent((payload?.apys.morpho ?? 0) * 100)}</p>
                 </div>

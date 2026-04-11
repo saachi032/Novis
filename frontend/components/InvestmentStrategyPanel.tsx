@@ -110,10 +110,10 @@ export function InvestmentStrategyPanel({
       {/* Status Messages */}
       <div className="mb-3 min-h-[1.5rem]">
         {isLoading && (
-          <p className="text-xs text-blue-600 animate-pulse">⏳ Updating strategy...</p>
+          <p className="text-xs text-blue-600 animate-pulse">Updating strategy...</p>
         )}
         {showSuccess && (
-          <p className="text-xs text-brand-green">✓ Strategy saved successfully</p>
+          <p className="text-xs text-brand-green">Strategy saved successfully</p>
         )}
       </div>
 

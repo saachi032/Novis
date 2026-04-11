@@ -148,7 +148,7 @@ export function RebalanceTable() {
             )}
             {(success || showSuccess) && (
               <p className="text-[10px] text-brand-green flex items-center gap-1">
-                <span>✓</span> Rebalance initiated! Updating allocation...
+                <span></span> Rebalance initiated! Updating allocation...
               </p>
             )}
           </div>

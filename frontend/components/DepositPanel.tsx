@@ -30,7 +30,7 @@ export function DepositPanel() {
   const { blendedAPY } = useVaultAPYs();
   const { depositIntoVault, isLoading: depositLoading, hash, step } = useDeposit();
   const { setInvestmentStrategy } = useStrategyWithRetry();
-  const { addTransaction, updateTransactionStatus } = useTransactionHistory();
+  const { addTransaction, updateLatestTransactionHashAndStatus } = useTransactionHistory();
 
   const [depositAmount, setDepositAmount] = useState("");
   const [risk, setRisk] = useState<RiskLevel>("balanced");
@@ -38,14 +38,17 @@ export function DepositPanel() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [currentInvestmentId, setCurrentInvestmentId] = useState<string | null>(null);
+  const [depositHash, setDepositHash] = useState<string | null>(null);
 
-  // Track transaction status changes
+  // Track transaction status changes when hash arrives
   useEffect(() => {
-    if (currentInvestmentId && hash) {
-      updateTransactionStatus(currentInvestmentId, hash, "success");
+    if (currentInvestmentId && depositHash) {
+      console.log(`Updating transaction with real hash: ${depositHash}`);
+      updateLatestTransactionHashAndStatus(currentInvestmentId, depositHash, "active");
       setCurrentInvestmentId(null);
+      setDepositHash(null);
     }
-  }, [hash, currentInvestmentId, updateTransactionStatus]);
+  }, [depositHash, currentInvestmentId, updateLatestTransactionHashAndStatus]);
 
   const handleDepositAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -72,16 +75,16 @@ export function DepositPanel() {
 
       // STEP 1: Deposit USDC to vault (REQUIRED - must succeed)
       console.log("Starting deposit...");
-      await depositIntoVault(depositAmount);
+      const actualTxHash = await depositIntoVault(depositAmount);
       
-      // Record the transaction in history
-      const txHash = `0x${Math.random().toString(16).slice(2)}`;
-      const invId = addTransaction(depositAmount, risk, duration, txHash, "deposit");
+      // Record the transaction in history with the actual hash
+      const invId = addTransaction(depositAmount, risk, duration, actualTxHash, "deposit");
       setCurrentInvestmentId(invId);
+      setDepositHash(actualTxHash);
 
       // Deposit succeeded!
       setSuccess(
-        `✓ Deposit of ${depositAmount} USDC completed! Funds in vault.`
+        `Deposit of ${depositAmount} USDC completed! Funds in vault.`
       );
       setDepositAmount("");
 
@@ -95,7 +98,7 @@ export function DepositPanel() {
         .then(() => {
           console.log("Strategy set successfully");
           setSuccess(
-            `✓ Deposit complete! Risk: ${risk} • Checks: ${duration}`
+            `Deposit complete! Risk: ${risk} • Checks: ${duration}`
           );
         })
         .catch((err) => {
@@ -107,10 +110,9 @@ export function DepositPanel() {
       const errorMsg = err instanceof Error ? err.message : "Deposit failed";
       console.error("Deposit error:", errorMsg);
 
-      // Record failed transaction
-      const txHash = `0xfailed_${Date.now()}`;
-      const invId = addTransaction(depositAmount, risk, duration, txHash, "deposit");
-      updateTransactionStatus(invId, txHash, "failed");
+      // Record failed transaction with error marker
+      const invId = addTransaction(depositAmount, risk, duration, "failed", "deposit");
+      updateLatestTransactionHashAndStatus(invId, "failed", "failed");
 
       if (errorMsg.includes("allowance")) {
         setError(
@@ -153,7 +155,7 @@ export function DepositPanel() {
       {/* Success Banner */}
       {success && (
         <div className="mb-4 rounded-lg border border-green-300 bg-green-50 p-4">
-          <p className="text-sm font-semibold text-green-900">✓ {success}</p>
+          <p className="text-sm font-semibold text-green-900">{success}</p>
         </div>
       )}
 

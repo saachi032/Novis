@@ -8,10 +8,13 @@ export interface Transaction {
   amountUSD: string;
   timestamp: number;
   txHash: string;
-  status: "pending" | "success" | "failed";
+  status: "active" | "failed" | "pending";
   riskLevel: "conservative" | "balanced" | "aggressive";
   duration: "daily" | "weekly" | "monthly" | "quarterly" | "halfYearly";
-  protocol?: "aave" | "compound";
+  aaveAmount?: string;
+  compoundAmount?: string;
+  aavePercentage?: number;
+  compoundPercentage?: number;
   note?: string;
   shares?: string;
 }
@@ -57,7 +60,17 @@ export function useTransactionHistory() {
       const key = `investments_${address}`;
       const stored = localStorage.getItem(key);
       if (stored) {
-        setInvestments(JSON.parse(stored));
+        const parsed = JSON.parse(stored);
+        // Migrate old transactions with "pending"/"success" status to "active"
+        const migrated = parsed.map((inv: Investment) => ({
+          ...inv,
+          transactions: inv.transactions.map((txn: any) => ({
+            ...txn,
+            // Migrate old "pending"/"success" statuses to new enum
+            status: (txn.status === "pending" || (txn.status as any) === "success") ? "active" : txn.status,
+          })),
+        }));
+        setInvestments(migrated);
       }
     } catch (err) {
       console.error("Failed to load investment history:", err);
@@ -88,6 +101,11 @@ export function useTransactionHistory() {
       type: "deposit" | "withdrawal" | "rebalance" = "deposit"
     ) => {
       const investmentId = `inv_${Date.now()}`;
+      // Default allocation: 42% Aave, 58% Compound
+      const amountNum = parseFloat(amount);
+      const aaveAmount = (amountNum * 0.42).toFixed(2);
+      const compoundAmount = (amountNum * 0.58).toFixed(2);
+      
       const newInvestment: Investment = {
         id: investmentId,
         amount,
@@ -103,9 +121,13 @@ export function useTransactionHistory() {
             amountUSD: amount,
             timestamp: Date.now(),
             txHash,
-            status: "pending",
+            status: "active",
             riskLevel,
             duration,
+            aaveAmount,
+            compoundAmount,
+            aavePercentage: 42,
+            compoundPercentage: 58,
           },
         ],
         currentValue: amount,
@@ -129,7 +151,7 @@ export function useTransactionHistory() {
   );
 
   const updateTransactionStatus = useCallback(
-    (investmentId: string, txHash: string, status: "pending" | "success" | "failed") => {
+    (investmentId: string, txHash: string, status: "pending" | "active" | "failed") => {
       const updated = investments.map((inv) => {
         if (inv.id === investmentId) {
           return {
@@ -137,6 +159,36 @@ export function useTransactionHistory() {
             transactions: inv.transactions.map((txn) =>
               txn.txHash === txHash ? { ...txn, status } : txn
             ),
+            status: status === "failed" ? "failed" : inv.status,
+          };
+        }
+        return inv;
+      });
+      saveInvestments(updated);
+    },
+    [investments, saveInvestments]
+  );
+
+  // Update the most recent transaction's hash and status (useful when hash wasn't known at creation time)
+  const updateLatestTransactionHashAndStatus = useCallback(
+    (investmentId: string, newHash: string, status: "pending" | "active" | "failed") => {
+      const updated = investments.map((inv) => {
+        if (inv.id === investmentId) {
+          const updatedTransactions = [...inv.transactions];
+          if (updatedTransactions.length > 0) {
+            const lastTxn = updatedTransactions[updatedTransactions.length - 1];
+            // Check if this transaction is still pending/placeholder and waiting for a real hash
+            if ((lastTxn.status === "pending" && lastTxn.txHash.startsWith("pending_")) || newHash === "failed") {
+              updatedTransactions[updatedTransactions.length - 1] = {
+                ...lastTxn,
+                txHash: newHash,
+                status,
+              };
+            }
+          }
+          return {
+            ...inv,
+            transactions: updatedTransactions,
             status: status === "failed" ? "failed" : inv.status,
           };
         }
@@ -196,6 +248,7 @@ export function useTransactionHistory() {
     isLoading,
     addTransaction,
     updateTransactionStatus,
+    updateLatestTransactionHashAndStatus,
     addYieldSnapshot,
     getInvestmentById,
     getActiveInvestments,

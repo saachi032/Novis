@@ -60,49 +60,48 @@ export function CheckingDuration({ currentRisk }: CheckingDurationProps) {
   };
 
   return (
-    <div className="surface-card h-full min-h-[17rem] p-5 transition duration-300 hover:scale-[1.01]">
-      <div className="flex items-start justify-between gap-4">
-        <div>
+    <div className="surface-card h-full flex flex-col p-5 transition duration-300 hover:scale-[1.01] hover:shadow-lg">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1">
           <h3 className="text-sm font-semibold text-brand-black">Checking frequency</h3>
-          <p className="mt-1 max-w-md text-xs text-neutral-600">
-            How often the system evaluates rebalancing opportunities. Writes to{" "}
-            <code className="text-neutral-700">RiskRegistry</code>.
+          <p className="mt-1 text-xs text-neutral-600">
+            How often the system rebalances. More frequent checks = faster response, higher gas costs.
           </p>
         </div>
         <span
-          className="flex h-7 w-7 shrink-0 cursor-help items-center justify-center rounded-full border border-brand-gray bg-brand-bg text-xs font-semibold text-neutral-600"
+          className="flex h-6 w-6 shrink-0 cursor-help items-center justify-center rounded-full border border-brand-gray bg-brand-bg text-[10px] font-bold text-neutral-600"
           title="More frequent checks = faster response to APY changes, but higher gas costs. Less frequent = lower costs but slower adaptation."
         >
           ?
         </span>
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
         {durations.map((d) => (
           <button
             key={d.id}
             type="button"
             onClick={() => handleDurationChange(d.id)}
             disabled={isLoading}
-            className={`rounded-2xl border px-3 py-3 text-left text-xs transition duration-300 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed ${
+            className={`rounded-lg border px-3 py-2 text-left text-xs transition duration-300 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed ${
               duration === d.id
                 ? "border-brand-green bg-brand-green/10 text-brand-black"
                 : "border-brand-gray/80 bg-white text-neutral-600 hover:border-brand-gray"
             }`}
           >
-            <span className="block text-sm font-bold">{d.label}</span>
-            <span className="mt-1 block text-[11px] leading-snug text-neutral-500">
-              {d.hint}
+            <span className="text-sm font-semibold block">{d.label}</span>
+            <span className="mt-0.5 block text-[10px] leading-tight text-neutral-500">
+              {d.hint.replace("Check every ", "").replace(" hours", "h").replace(" days", "d")}
             </span>
           </button>
         ))}
       </div>
 
       {/* Status Messages */}
-      <div className="mt-4 min-h-[2rem]">
+      <div className="mt-4 min-h-[1.25rem]">
         {isLoading && (
           <p className="text-xs text-neutral-600 animate-pulse">
-            Updating frequency...
+            Updating...
           </p>
         )}
         {error && (
@@ -111,18 +110,15 @@ export function CheckingDuration({ currentRisk }: CheckingDurationProps) {
           </p>
         )}
         {(success || localSuccess) && (
-          <p className="text-xs text-brand-green">
-            ✓ Frequency updated to {duration}
+          <p className="text-xs text-brand-green font-medium">
+            ✓ Updated to {duration}
           </p>
         )}
       </div>
 
-      <div className="mt-4 border-t border-brand-gray/60 pt-4">
-        <p className="text-[11px] leading-relaxed text-neutral-600">
-          <span className="font-semibold text-brand-black">Current settings:</span>
-          <br />
-          Risk: <span className="font-semibold">{riskLevel}</span> • Frequency:{" "}
-          <span className="font-semibold">{duration}</span>
+      <div className="mt-auto border-t border-brand-gray/60 pt-4">
+        <p className="text-xs leading-relaxed text-neutral-600">
+          <span className="font-semibold text-brand-black">Rebalancing:</span> Automatically moves funds between Aave v3 and Compound v3 based on APY differential.
         </p>
       </div>
     </div>

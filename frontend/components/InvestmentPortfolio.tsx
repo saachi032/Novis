@@ -206,7 +206,7 @@ export function InvestmentPortfolio() {
                 className="surface-card p-5 rounded-xl transition duration-300 hover:scale-[1.02] border-2 border-red-200 bg-red-50 text-left"
               >
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs text-red-700 font-semibold">❌ Failed</p>
+                  <p className="text-xs text-red-700 font-semibold">Failed</p>
                   <span className={`px-2 py-1 text-[10px] font-semibold rounded ${
                       inv.riskLevel === "conservative"
                         ? "bg-blue-100 text-blue-800"

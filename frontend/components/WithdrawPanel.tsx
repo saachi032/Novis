@@ -204,7 +204,7 @@ export function WithdrawPanel() {
         {/* Success Message */}
         {success && (
           <div className="rounded-lg bg-green-50 p-3 text-xs text-green-700">
-            ✓ {success}
+            {success}
           </div>
         )}
 

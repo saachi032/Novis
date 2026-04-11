@@ -51,33 +51,50 @@ export function DashboardSection() {
         <MarketplacePortfolio />
 
         {hydrated ? (
-          <div className="mt-12 grid items-stretch gap-5 lg:grid-cols-3">
-            <WalletOverview />
-            <StatCard
-              label="Blended vault APY"
-              value={`${blendedAPY}%`}
-              sub={apyLoading ? "Loading..." : "Weighted by protocol allocation"}
-            />
-            <StatCard
-              label="Your position"
-              value={positionValue && positionValue !== "0" ? `$${Number(positionValue).toLocaleString(undefined, { maximumFractionDigits: 2 })}` : "—"}
-              sub={positionLoading ? "Loading..." : "Deposit USDC to mint vault shares (ERC-4626)"}
-            />
-            <ProtocolBreakdown />
-            <ProtocolAllocation />
-            <RiskAndFees />
-            <CheckingDuration />
+          <div className="mt-12 space-y-5">
+            {/* Top row - Key metrics */}
+            <div className="grid items-stretch gap-5 lg:grid-cols-4">
+              <WalletOverview />
+              <StatCard
+                label="Blended vault APY"
+                value={`${blendedAPY}%`}
+                sub={apyLoading ? "Loading..." : "Weighted by protocol allocation"}
+              />
+              <StatCard
+                label="Your position"
+                value={positionValue && positionValue !== "0" ? `$${Number(positionValue).toLocaleString(undefined, { maximumFractionDigits: 2 })}` : "—"}
+                sub={positionLoading ? "Loading..." : "Deposit USDC to mint vault shares (ERC-4626)"}
+              />
+              <ProtocolBreakdown />
+            </div>
+            
+            {/* Middle row - Allocation & Risk */}
+            <div className="grid items-stretch gap-5 lg:grid-cols-2">
+              <ProtocolAllocation />
+              <RiskAndFees />
+            </div>
+            
+            {/* Bottom row - Checking Duration */}
+            <div className="grid items-stretch gap-5 lg:grid-cols-1">
+              <CheckingDuration />
+            </div>
           </div>
         ) : (
           // Server render / loading skeleton
-          <div className="mt-12 grid items-stretch gap-5 lg:grid-cols-3">
-            <div className="surface-card h-40 animate-pulse bg-neutral-100" />
-            <div className="surface-card h-40 animate-pulse bg-neutral-100" />
-            <div className="surface-card h-40 animate-pulse bg-neutral-100" />
-            <div className="surface-card h-40 animate-pulse bg-neutral-100" />
-            <div className="surface-card h-40 animate-pulse bg-neutral-100" />
-            <div className="surface-card h-40 animate-pulse bg-neutral-100" />
-            <div className="surface-card h-40 animate-pulse bg-neutral-100" />
+          <div className="mt-12 space-y-5">
+            <div className="grid items-stretch gap-5 lg:grid-cols-4">
+              <div className="surface-card h-40 animate-pulse bg-neutral-100" />
+              <div className="surface-card h-40 animate-pulse bg-neutral-100" />
+              <div className="surface-card h-40 animate-pulse bg-neutral-100" />
+              <div className="surface-card h-40 animate-pulse bg-neutral-100" />
+            </div>
+            <div className="grid items-stretch gap-5 lg:grid-cols-2">
+              <div className="surface-card h-40 animate-pulse bg-neutral-100" />
+              <div className="surface-card h-40 animate-pulse bg-neutral-100" />
+            </div>
+            <div className="grid items-stretch gap-5 lg:grid-cols-1">
+              <div className="surface-card h-40 animate-pulse bg-neutral-100" />
+            </div>
           </div>
         )}
 

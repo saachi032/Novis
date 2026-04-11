@@ -47,17 +47,16 @@ export function RiskAndFees() {
   };
 
   return (
-    <div className="surface-card h-full min-h-[17rem] p-5 transition duration-300 hover:scale-[1.01]">
-      <div className="flex items-start justify-between gap-4">
-        <div>
+    <div className="surface-card h-full flex flex-col p-5 transition duration-300 hover:scale-[1.01] hover:shadow-lg">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1">
           <h3 className="text-sm font-semibold text-brand-black">Risk level</h3>
-          <p className="mt-1 max-w-md text-xs text-neutral-600">
-            Allocation percentage stored in{" "}
-            <code className="text-neutral-700">RiskRegistry</code>. Controls yield/volatility tradeoff.
+          <p className="mt-1 text-xs text-neutral-600">
+            Allocation percentage controls yield/volatility.
           </p>
         </div>
         <span
-          className="flex h-7 w-7 shrink-0 cursor-help items-center justify-center rounded-full border border-brand-gray bg-brand-bg text-xs font-semibold text-neutral-600"
+          className="flex h-6 w-6 shrink-0 cursor-help items-center justify-center rounded-full border border-brand-gray bg-brand-bg text-[10px] font-bold text-neutral-600"
           title="Conservative = safer but lower yield. Aggressive = higher yield potential but more rebalancing activity."
         >
           ?
@@ -71,15 +70,15 @@ export function RiskAndFees() {
             type="button"
             onClick={() => handleRiskChange(l.id)}
             disabled={isLoading}
-            className={`flex-1 rounded-2xl border px-3 py-3 text-left text-xs transition duration-300 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed ${
+            className={`flex-1 rounded-xl border px-3 py-2 text-left text-xs transition duration-300 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed ${
               risk === l.id
                 ? "border-brand-green bg-brand-green/10 text-brand-black"
                 : "border-brand-gray/80 bg-white text-neutral-600 hover:border-brand-gray"
             }`}
           >
-            <span className="block text-sm font-bold">{l.label}</span>
-            <span className="mt-1 block text-[11px] leading-snug text-neutral-500">
-              {l.hint}
+            <span className="text-sm font-semibold block">{l.label}</span>
+            <span className="mt-0.5 block text-[10px] leading-tight text-neutral-500">
+              {l.hint.split(",")[0]}
             </span>
           </button>
         ))}
@@ -89,7 +88,7 @@ export function RiskAndFees() {
       <div className="mt-3 min-h-[1.25rem]">
         {isLoading && (
           <p className="text-xs text-neutral-600 animate-pulse">
-            Updating risk level...
+            Updating...
           </p>
         )}
         {error && (
@@ -98,38 +97,16 @@ export function RiskAndFees() {
           </p>
         )}
         {(success || localSuccess) && (
-          <p className="text-xs text-brand-green">
-            ✓ Risk level updated
+          <p className="text-xs text-brand-green font-medium">
+            ✓ Updated
           </p>
         )}
       </div>
 
-      <div className="mt-6 border-t border-brand-gray/60 pt-5">
-        <p className="text-xs text-neutral-600">
-          <span className="font-semibold text-brand-black">Fee transparency:</span>{" "}
-          0.5% performance fee on yield only (not principal). No deposit or
-          withdrawal fees in v1.
+      <div className="mt-auto border-t border-brand-gray/60 pt-4">
+        <p className="text-xs leading-relaxed text-neutral-600">
+          <span className="font-semibold text-brand-black">Fee:</span> 0.5% on yield only. No deposit/withdrawal fees.
         </p>
-        <button
-          type="button"
-          onClick={() => setFaqOpen((o) => !o)}
-          className="mt-3 text-xs font-semibold text-brand-green transition duration-300 hover:text-[#3d5a56]"
-        >
-          {faqOpen ? "Hide" : "Show"} rebalance FAQ
-        </button>
-        {faqOpen && (
-          <ul className="mt-3 list-inside list-disc space-y-2 text-[11px] leading-relaxed text-neutral-600">
-            <li>
-              Rebalance when |Aave APY − Compound APY| exceeds threshold (e.g.
-              3%) and 7-day projected gain exceeds gas.
-            </li>
-            <li>24-hour cooldown between rebalances to reduce ping-pong.</li>
-            <li>
-              Chainlink Automation primary path; <code className="text-neutral-800">forceRebalance</code> available for manual
-              trigger.
-            </li>
-          </ul>
-        )}
       </div>
     </div>
   );

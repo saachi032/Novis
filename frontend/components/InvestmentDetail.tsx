@@ -10,7 +10,6 @@ interface InvestmentDetailProps {
 
 export function InvestmentDetail({ investment, onClose }: InvestmentDetailProps) {
   const [view, setView] = useState<"overview" | "history" | "chart">("overview");
-
   const stats = useMemo(() => {
     const firstYield = investment.yields[0];
     const lastYield = investment.yields[investment.yields.length - 1];
@@ -85,7 +84,11 @@ export function InvestmentDetail({ investment, onClose }: InvestmentDetailProps)
                   : "bg-gray-100 text-gray-800"
             }`}
           >
-            {investment.status.charAt(0).toUpperCase() + investment.status.slice(1)}
+            {investment.status === "active"
+              ? "Completed"
+              : investment.status === "failed"
+                ? "Failed"
+                : "Pending"}
           </span>
         </div>
 
@@ -179,42 +182,85 @@ export function InvestmentDetail({ investment, onClose }: InvestmentDetailProps)
             {investment.transactions.length === 0 ? (
               <p className="text-sm text-neutral-500">No transactions yet</p>
             ) : (
-              investment.transactions.map((txn) => (
+              investment.transactions.map((txn) => {
+                console.log("Transaction status:", txn.status);
+                return (
                 <div
                   key={txn.id}
-                  className="border border-brand-gray rounded-lg p-4 flex items-center justify-between"
+                  className="border border-brand-gray rounded-lg p-4 space-y-3"
                 >
-                  <div>
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <p className="font-semibold text-brand-black text-sm">
                         {txn.type.charAt(0).toUpperCase() + txn.type.slice(1)}
                       </p>
                       <span
-                        className={`px-2 py-1 text-[10px] font-semibold rounded ${
-                          txn.status === "success"
+                        className={`px-3 py-1 text-[10px] font-semibold rounded ${
+                          txn.status === "active"
                             ? "bg-green-100 text-green-800"
                             : txn.status === "failed"
                               ? "bg-red-100 text-red-800"
                               : "bg-yellow-100 text-yellow-800"
                         }`}
                       >
-                        {txn.status.charAt(0).toUpperCase() + txn.status.slice(1)}
+                        {txn.status == "active" ? "Completed" : txn.status === "failed" ? "✗ Failed" : "Pending"}
                       </span>
                     </div>
-                    <p className="text-xs text-neutral-500 mt-1">
-                      {new Date(txn.timestamp).toLocaleString()}
-                    </p>
-                    <p className="text-xs text-neutral-500 font-mono mt-1">
-                      {txn.txHash.slice(0, 20)}...
-                    </p>
+                    <div className="text-right">
+                      <p className="font-semibold text-brand-black text-lg">
+                        ${parseFloat(txn.amount).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-brand-black">
-                      ${parseFloat(txn.amount).toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                    </p>
+                  
+                  {/* Protocol Allocation */}
+                  {txn.type === "deposit" && txn.aaveAmount && txn.compoundAmount && (
+                    <div className="bg-brand-bg/50 rounded-lg p-3 space-y-2">
+                      <p className="text-xs font-semibold text-neutral-600 uppercase tracking-wide">Allocated to:</p>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div>
+                            <span className="text-xs text-neutral-600 font-medium">Aave v3</span>
+                          </div>
+                          <span className="text-xs font-semibold text-brand-black">
+                            ${parseFloat(txn.aaveAmount).toLocaleString(undefined, { maximumFractionDigits: 2 })} ({txn.aavePercentage}%)
+                          </span>
+                        </div>
+                        <div className="w-full bg-neutral-200 rounded-full h-1.5">
+                          <div
+                            className="bg-blue-500 h-1.5 rounded-full"
+                            style={{ width: `${txn.aavePercentage || 42}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
+                            <span className="text-xs text-neutral-600 font-medium">Compound v3</span>
+                          </div>
+                          <span className="text-xs font-semibold text-brand-black">
+                            ${parseFloat(txn.compoundAmount).toLocaleString(undefined, { maximumFractionDigits: 2 })} ({txn.compoundPercentage}%)
+                          </span>
+                        </div>
+                        <div className="w-full bg-neutral-200 rounded-full h-1.5">
+                          <div
+                            className="bg-emerald-500 h-1.5 rounded-full"
+                            style={{ width: `${txn.compoundPercentage || 58}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="flex items-center justify-between text-xs text-neutral-500">
+                    <p>{new Date(txn.timestamp).toLocaleString()}</p>
+                    <p className="font-mono text-neutral-500">{txn.txHash === "failed" ? "Failed" : txn.txHash.slice(0, 16)}...</p>
                   </div>
                 </div>
-              ))
+                );
+              })
             )}
           </div>
         )}
@@ -227,7 +273,7 @@ export function InvestmentDetail({ investment, onClose }: InvestmentDetailProps)
               <h4 className="text-sm font-semibold text-brand-black mb-4">Portfolio Value Over Time</h4>
               <div className="bg-brand-bg p-4 rounded-lg h-48 flex items-center justify-center">
                 <div className="text-center">
-                  <p className="text-xs text-neutral-500">📈 Line Chart Placeholder</p>
+                  <p className="text-xs text-neutral-500">Line Chart Placeholder</p>
                   <div className="mt-4 space-y-2 w-full">
                     {investment.yields.map((y, idx) => (
                       <div key={idx} className="flex items-center justify-between text-xs">
@@ -250,7 +296,7 @@ export function InvestmentDetail({ investment, onClose }: InvestmentDetailProps)
               <h4 className="text-sm font-semibold text-brand-black mb-4">Yield Progression</h4>
               <div className="bg-brand-bg p-4 rounded-lg h-48 flex items-center justify-center">
                 <div className="text-center w-full">
-                  <p className="text-xs text-neutral-500 mb-4">📊 Bar Chart Placeholder</p>
+                  <p className="text-xs text-neutral-500 mb-4">Bar Chart Placeholder</p>
                   <div className="flex items-end justify-center gap-2 h-32">
                     {investment.yields.map((y, idx) => {
                       const maxYield = Math.max(

@@ -27,7 +27,7 @@ export function useDeposit() {
 
   const depositIntoVault = useCallback(
     (amount: string) => {
-      return new Promise<void>((resolve, reject) => {
+      return new Promise<string>((resolve, reject) => {
         if (!address || !publicClient) {
           reject(new Error("Wallet not connected"));
           return;
@@ -75,7 +75,7 @@ export function useDeposit() {
                         onSuccess: (depositHash) => {
                           setHash(depositHash);
                           setStep("idle");
-                          resolve();
+                          resolve(depositHash); // Return the actual hash
                         },
                         onError: (err) => {
                           setStep("idle");

@@ -62,7 +62,7 @@ export function useSetInvestmentStrategy() {
               abi: RISK_REGISTRY_ABI,
               functionName: "setStrategy",
               args: [riskEnum, durationEnum],
-              // Don't set explicit gas - let viem estimate it naturally
+              gas: BigInt(200000), // Strategy update is simple - update 2 state vars
             },
             {
               onSuccess: () => {

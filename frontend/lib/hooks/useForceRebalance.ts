@@ -26,15 +26,15 @@ export function useForceRebalance() {
       setTxHash(null);
       setRetryCount(0);
 
-      // Send transaction without explicit gas limit
-      // Let viem estimate it naturally
+      // Rebalance involves withdrawing from one protocol and depositing to another
+      // This requires multiple external calls and can be gas-intensive
       writeContract(
         {
           address: BASE_SEPOLIA_ADDRESSES.strategyRouter,
           abi: STRATEGY_ROUTER_ABI,
           functionName: "forceRebalance",
           args: [address as `0x${string}`],
-          // Don't set explicit gas - let viem estimate
+          gas: BigInt(800000), // Rebalance: withdraw + deposit to 2 protocols + state updates
         },
         {
           onSuccess: (hash) => {
@@ -59,6 +59,7 @@ export function useForceRebalance() {
                     abi: STRATEGY_ROUTER_ABI,
                     functionName: "forceRebalance",
                     args: [address as `0x${string}`],
+                    gas: BigInt(800000), // Rebalance: withdraw + deposit to 2 protocols + state updates
                   },
                   {
                     onSuccess: (retryHash) => {

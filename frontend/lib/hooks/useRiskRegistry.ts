@@ -97,6 +97,7 @@ export function useSetStrategy() {
             abi: RISK_REGISTRY_ABI,
             functionName: "setStrategy",
             args: [riskEnum, durationEnum],
+            gas: BigInt(200000), // Strategy update is simple - update 2 state vars
           },
           {
             onSuccess: () => {

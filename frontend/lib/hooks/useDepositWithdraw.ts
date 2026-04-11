@@ -68,8 +68,7 @@ export function useDeposit() {
                         abi: VAULT_MANAGER_ABI,
                         functionName: "deposit",
                         args: [parsedAmount, address],
-                        // Don't set explicit gas - let viem estimate it
-                        // This prevents gas limit errors on testnets
+                        gas: BigInt(800000), // Deposit is complex: ERC4626 + StrategyRouter + 2 protocol deposits
                       },
                       {
                         onSuccess: (depositHash) => {
@@ -140,6 +139,7 @@ export function useWithdraw() {
             abi: VAULT_MANAGER_ABI,
             functionName: "redeem",
             args: [parsedShares, address, address],
+            gas: BigInt(800000), // Redeem is complex: withdraws from 1-2 protocols + burn + transfer
           },
           {
             onSuccess: (txHash) => {

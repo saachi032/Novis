@@ -7,10 +7,26 @@
     "usdc": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
     "aavePool": "0x8bAB6d1b75f19e9eD9fCe8b9BD338844fF79aE27",
     "compoundComet": "0xc3d688b66703497DAa19211E0b686300185341f5",
-    "riskRegistry": "0x2444b744dcd79e5382f7447bcf829a9a33a1ecfa",
-    "strategyRouter": "0x500a9ac2d88ad4504f93e6fb3fabd8efc3da726f",
-    "vaultManager": "0x67f1fee31a6c8e76b843626e005b68a39092d4ac",
-    "feeCollector": "0x3968784c67c75e45b314101d319f20dbd8821fdf",
-    "rebalanceExecutor": "0xd7e9443f53ac73bb8d7d9a12a98e455e4017a65e"
+    "riskRegistry": "0xb6a9bd2e392f01040a9914b889f16f9aedb88687"
+  },
+  "profiles": {
+    "conservative": {
+      "strategyRouter": "0x6c88eb764177ffc9e69cd320bde6852ebfef4622",
+      "vaultManager": "0x8d51abb07cb0644b47b3772656b0414417a4504f",
+      "feeCollector": "0xff42a584d1c1c91acd9a82e018de1027689b6d30",
+      "rebalanceExecutor": "0x98fcbaeaa219ead67a204421898810173a956a91"
+    },
+    "balanced": {
+      "strategyRouter": "0xdf945ef68274e036f82ad97dd574be6bea065b77",
+      "vaultManager": "0xc6ce0c8236582bfeadc219abf0aa27e3979d70f1",
+      "feeCollector": "0x5156fb3fd0b40bddc28c4c51ca0d38bc5d03e40e",
+      "rebalanceExecutor": "0xd5d581982642d2e3ef79404e1d25d46789eede2f"
+    },
+    "aggressive": {
+      "strategyRouter": "0x511daf7b551608618fe0d86d0be8921a6abed36b",
+      "vaultManager": "0xae05175762fac537ceac5d8b56b5c16e931049c4",
+      "feeCollector": "0xbf4c836fed68ecec54c90f98a43088bfc9a9053d",
+      "rebalanceExecutor": "0xa462d680b3aa59dad5b0bccbee25bd1e90cfe26b"
+    }
   }
 }

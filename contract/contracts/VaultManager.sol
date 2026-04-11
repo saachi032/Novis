@@ -9,11 +9,14 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IFeeCollector} from "./interfaces/IFeeCollector.sol";
+import {IRiskRegistry} from "./interfaces/IRiskRegistry.sol";
 import {IStrategyRouter} from "./interfaces/IStrategyRouter.sol";
 
 contract VaultManager is ERC4626, Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
+    IRiskRegistry public immutable riskRegistry;
+    IRiskRegistry.RiskLevel public immutable riskLevel;
     IStrategyRouter public strategyRouter;
     IFeeCollector public feeCollector;
 
@@ -23,6 +26,7 @@ contract VaultManager is ERC4626, Ownable, Pausable, ReentrancyGuard {
     event FeesTransferred(uint256 amount);
 
     error OnlyFeeCollector();
+    error InvalidRiskProfile();
 
     modifier onlyFeeCollector() {
         if (msg.sender != address(feeCollector)) revert OnlyFeeCollector();
@@ -33,8 +37,13 @@ contract VaultManager is ERC4626, Ownable, Pausable, ReentrancyGuard {
         IERC20 asset_,
         string memory name_,
         string memory symbol_,
+        address riskRegistry_,
+        IRiskRegistry.RiskLevel riskLevel_,
         address initialOwner_
-    ) ERC20(name_, symbol_) ERC4626(asset_) Ownable(initialOwner_) {}
+    ) ERC20(name_, symbol_) ERC4626(asset_) Ownable(initialOwner_) {
+        riskRegistry = IRiskRegistry(riskRegistry_);
+        riskLevel = riskLevel_;
+    }
 
     function setStrategyRouter(address strategyRouter_) external onlyOwner {
         strategyRouter = IStrategyRouter(strategyRouter_);
@@ -77,6 +86,7 @@ contract VaultManager is ERC4626, Ownable, Pausable, ReentrancyGuard {
     }
 
     function deposit(uint256 assets, address receiver) public override whenNotPaused nonReentrant returns (uint256 shares) {
+        _requireMatchingRisk(receiver);
         shares = super.deposit(assets, receiver);
 
         if (address(feeCollector) != address(0)) {
@@ -87,6 +97,7 @@ contract VaultManager is ERC4626, Ownable, Pausable, ReentrancyGuard {
     }
 
     function mint(uint256 shares, address receiver) public override whenNotPaused nonReentrant returns (uint256 assets) {
+        _requireMatchingRisk(receiver);
         assets = super.mint(shares, receiver);
 
         if (address(feeCollector) != address(0)) {
@@ -156,5 +167,15 @@ contract VaultManager is ERC4626, Ownable, Pausable, ReentrancyGuard {
 
         uint256 shortfall = assets - idleAssets;
         strategyRouter.withdrawToVault(shortfall);
+    }
+
+    function _requireMatchingRisk(address receiver) internal view {
+        if (address(riskRegistry) == address(0)) {
+            return;
+        }
+
+        if (riskRegistry.getRiskLevel(receiver) != riskLevel) {
+            revert InvalidRiskProfile();
+        }
     }
 }

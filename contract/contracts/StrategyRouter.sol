@@ -21,13 +21,12 @@ contract StrategyRouter is Ownable, ReentrancyGuard {
     uint256 public constant AAVE_RAY_TO_BPS_DIVISOR = 1e23;
 
     IERC20 public immutable assetToken;
+    IRiskRegistry.RiskLevel public immutable riskLevel;
     IAavePool public aavePool;
     ICompoundToken public compoundToken;
 
     address public vault;
     address public rebalanceOperator;
-    IRiskRegistry public riskRegistry;
-    IRiskRegistry.RiskLevel public defaultRiskLevel;
 
     uint256 public blocksPerYear = 2_628_000;
     uint256 public aaveManagedAssets;
@@ -35,8 +34,6 @@ contract StrategyRouter is Ownable, ReentrancyGuard {
 
     event VaultUpdated(address indexed vault);
     event RebalanceOperatorUpdated(address indexed operator);
-    event RiskRegistryUpdated(address indexed riskRegistry);
-    event DefaultRiskLevelUpdated(IRiskRegistry.RiskLevel level);
     event ProtocolAddressesUpdated(address indexed aavePool, address indexed compoundToken);
     event Invested(uint256 amount, uint256 aaveAmount, uint256 compoundAmount);
     event Redeemed(Protocol indexed protocol, uint256 amount, address indexed recipient);
@@ -61,6 +58,7 @@ contract StrategyRouter is Ownable, ReentrancyGuard {
         address asset_,
         address aavePool_,
         address compoundToken_,
+        IRiskRegistry.RiskLevel riskLevel_,
         address initialOwner_
     ) Ownable(initialOwner_) {
         if (asset_ == address(0) || aavePool_ == address(0) || compoundToken_ == address(0)) {
@@ -68,9 +66,9 @@ contract StrategyRouter is Ownable, ReentrancyGuard {
         }
 
         assetToken = IERC20(asset_);
+        riskLevel = riskLevel_;
         aavePool = IAavePool(aavePool_);
         compoundToken = ICompoundToken(compoundToken_);
-        defaultRiskLevel = IRiskRegistry.RiskLevel.Balanced;
     }
 
     function setVault(address vault_) external onlyOwner {
@@ -82,16 +80,6 @@ contract StrategyRouter is Ownable, ReentrancyGuard {
     function setRebalanceOperator(address operator_) external onlyOwner {
         rebalanceOperator = operator_;
         emit RebalanceOperatorUpdated(operator_);
-    }
-
-    function setRiskRegistry(address riskRegistry_) external onlyOwner {
-        riskRegistry = IRiskRegistry(riskRegistry_);
-        emit RiskRegistryUpdated(riskRegistry_);
-    }
-
-    function setDefaultRiskLevel(IRiskRegistry.RiskLevel level) external onlyOwner {
-        defaultRiskLevel = level;
-        emit DefaultRiskLevelUpdated(level);
     }
 
     function setProtocolAddresses(address aavePool_, address compoundToken_) external onlyOwner {
@@ -115,7 +103,7 @@ contract StrategyRouter is Ownable, ReentrancyGuard {
     }
 
     function getAllocation() public view returns (uint256 aaveAllocationBps, uint256 compoundAllocationBps) {
-        return getAllocationForRisk(defaultRiskLevel);
+        return getAllocationForRisk(riskLevel);
     }
 
     function getAllocationForRisk(

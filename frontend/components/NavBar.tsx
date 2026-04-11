@@ -1,12 +1,14 @@
 "use client";
 
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 
 const links = [
-  { href: "#features", label: "Features" },
-  { href: "#dashboard", label: "Marketplace" },
-  { href: "#buy-sell", label: "Buy" },
-  { href: "#buy-sell", label: "Sell & Trade" },
+  { href: "/features", label: "Features" },
+  { href: "/marketplace", label: "Marketplace" },
+  { href: "/buy", label: "Buy" },
+  { href: "/sell", label: "Sell & Trade" },
 ];
 
 function SearchIconButton() {
@@ -34,11 +36,13 @@ function SearchIconButton() {
 }
 
 export function NavBar() {
+  const pathname = usePathname();
+
   return (
     <header className="sticky top-0 z-50 border-b border-brand-gray/60 bg-white/85 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:h-[4.25rem] sm:px-6">
-        <a
-          href="#"
+        <Link
+          href="/"
           className="flex items-center gap-2 font-display text-lg font-bold tracking-tight text-brand-black"
         >
           <span
@@ -46,19 +50,22 @@ export function NavBar() {
             aria-hidden
           />
           novis
-        </a>
+        </Link>
         <nav
           className="hidden items-center gap-8 lg:flex"
           aria-label="Primary"
         >
           {links.map((l) => (
-            <a
-              key={`${l.href}-${l.label}`}
+            <Link
+              key={l.href}
               href={l.href}
-              className="text-sm font-medium text-neutral-600 transition duration-300 hover:text-brand-black"
+              className={`text-sm font-medium transition duration-300 hover:text-brand-black ${pathname === l.href
+                  ? "text-brand-black underline underline-offset-4 decoration-brand-green decoration-2"
+                  : "text-neutral-600"
+                }`}
             >
               {l.label}
-            </a>
+            </Link>
           ))}
         </nav>
         <div className="flex items-center gap-2 sm:gap-3">
@@ -69,13 +76,16 @@ export function NavBar() {
             </summary>
             <div className="absolute right-0 z-20 mt-2 min-w-[11rem] rounded-2xl border border-brand-gray/80 bg-white p-2 shadow-soft">
               {links.map((l) => (
-                <a
-                  key={`${l.href}-${l.label}-m`}
+                <Link
+                  key={`${l.href}-m`}
                   href={l.href}
-                  className="block rounded-xl px-3 py-2.5 text-sm text-neutral-700 transition duration-300 hover:bg-brand-bg"
+                  className={`block rounded-xl px-3 py-2.5 text-sm transition duration-300 hover:bg-brand-bg ${pathname === l.href
+                      ? "font-semibold text-brand-black"
+                      : "text-neutral-700"
+                    }`}
                 >
                   {l.label}
-                </a>
+                </Link>
               ))}
             </div>
           </details>

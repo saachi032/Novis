@@ -25,7 +25,7 @@ export function FooterSection() {
             Docs
           </a>
           <a
-            href="#dashboard"
+            href="/marketplace"
             className="transition duration-300 hover:text-brand-black"
           >
             Dashboard

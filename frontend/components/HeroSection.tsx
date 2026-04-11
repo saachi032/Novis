@@ -40,7 +40,7 @@ export function HeroSection() {
                   )}
                 </ConnectButton.Custom>
                 <a
-                  href="#features"
+                  href="/features"
                   className="inline-flex items-center justify-center rounded-full border border-brand-gray bg-white px-8 py-3.5 text-sm font-semibold text-brand-black transition duration-300 hover:scale-105 hover:bg-brand-bg"
                 >
                   Learn more

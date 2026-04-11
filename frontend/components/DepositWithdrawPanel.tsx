@@ -4,9 +4,13 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useState } from "react";
 import { useAccount } from "wagmi";
 
-export function DepositWithdrawPanel() {
+export function DepositWithdrawPanel({
+  defaultTab = "deposit",
+}: {
+  defaultTab?: "deposit" | "withdraw";
+}) {
   const { isConnected } = useAccount();
-  const [tab, setTab] = useState<"deposit" | "withdraw">("deposit");
+  const [tab, setTab] = useState<"deposit" | "withdraw">(defaultTab);
   const [amount, setAmount] = useState("");
 
   return (
@@ -17,11 +21,10 @@ export function DepositWithdrawPanel() {
             key={t}
             type="button"
             onClick={() => setTab(t)}
-            className={`flex-1 rounded-xl py-2.5 text-sm font-semibold capitalize transition duration-300 ${
-              tab === t
+            className={`flex-1 rounded-xl py-2.5 text-sm font-semibold capitalize transition duration-300 ${tab === t
                 ? "bg-white text-brand-black shadow-soft"
                 : "text-neutral-500 hover:text-brand-black"
-            }`}
+              }`}
           >
             {t}
           </button>

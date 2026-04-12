@@ -51,7 +51,7 @@ def filter_usdc_aave_compound(
     manifest: Iterable[dict],
     symbol: str = "USDC",
 ) -> List[PoolDescriptor]:
-    """Pick highest-TVL USDC pools for Aave v3 and Compound (v3 / v2 naming on DefiLlama)."""
+    """Pick highest-TVL USDC pools for Aave v3, Compound (v3 / v2), and Morpho (morpho / morpho-v1, etc.)."""
     aave = _best_pool_for_prefixes(manifest, symbol, "aave-v3", ("aave-v3",))
     compound = _best_pool_for_prefixes(
         manifest,
@@ -59,9 +59,12 @@ def filter_usdc_aave_compound(
         "compound-v3",
         ("compound-v3", "compound-v2", "compound"),
     )
+    morpho = _best_pool_for_prefixes(manifest, symbol, "morpho", ("morpho",))
     out: list[PoolDescriptor] = []
     if aave:
         out.append(aave)
     if compound:
         out.append(compound)
+    if morpho:
+        out.append(morpho)
     return out

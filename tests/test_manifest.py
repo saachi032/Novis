@@ -11,8 +11,11 @@ def test_filter_usdc_aave_compound_pick_best() -> None:
         _make_entry("aave-v3", "aave-high", 50_000.0),
         _make_entry("compound-v3", "compound-low", 5_000.0),
         _make_entry("compound-v3", "compound-high", 20_000.0),
+        _make_entry("morpho-v1", "morpho-low", 8_000.0),
+        _make_entry("morpho-v1", "morpho-high", 30_000.0),
     ]
     descriptors = filter_usdc_aave_compound(manifest)
-    assert len(descriptors) == 2
+    assert len(descriptors) == 3
     assert any(desc.pool_id == "aave-high" for desc in descriptors)
     assert any(desc.pool_id == "compound-high" for desc in descriptors)
+    assert any(desc.pool_id == "morpho-high" for desc in descriptors)

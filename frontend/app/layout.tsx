@@ -20,7 +20,7 @@ const workSans = Work_Sans({
 export const metadata: Metadata = {
   title: "Novis",
   description:
-    "Automated on-chain USDC yield on Base. Allocates across Aave v3 and Compound v3 with gas-aware rebalancing.",
+    "Automated on-chain stablecoin yield on Base (USDC, USDT, DAI). Allocates across Aave v3 and Compound v3 with gas-aware rebalancing.",
 };
 
 export default function RootLayout({

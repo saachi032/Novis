@@ -6,6 +6,10 @@ export function parseUSDC(amount: string): bigint {
   return parseUnits(amount, USDC_DECIMALS);
 }
 
+export function parseTokenAmount(amount: string, decimals: number): bigint {
+  return parseUnits(amount, decimals);
+}
+
 export function formatUSDC(amount: bigint): string {
   return formatUnits(amount, USDC_DECIMALS);
 }

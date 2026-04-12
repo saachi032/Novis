@@ -1,116 +1,157 @@
-import { useCallback, useState } from "react";
-import { useAccount, useWriteContract, usePublicClient, useWaitForTransactionReceipt } from "wagmi";
-import { BASE_SEPOLIA_ADDRESSES } from "@/lib/contracts";
+import { useCallback, useMemo, useState } from "react";
+import {
+  useAccount,
+  useWriteContract,
+  usePublicClient,
+  useChainId,
+  useReadContract,
+} from "wagmi";
+import { getVaultManagerAddress } from "@/lib/contracts";
 import { VAULT_MANAGER_ABI } from "@/lib/abis/VaultManager";
 import { USDC_ABI } from "@/lib/abis/USDC";
-import { parseUSDC } from "@/lib/utils/contractUtils";
+import { parseTokenAmount, parseUSDC } from "@/lib/utils/contractUtils";
+import {
+  getStablecoinMeta,
+  type StablecoinId,
+} from "@/lib/constants/stablecoins";
+
+export type DepositStep =
+  | "idle"
+  | "approving"
+  | "depositing"
+  | "zapping";
+
+const ZERO = "0x0000000000000000000000000000000000000000";
 
 /**
- * Hook for depositing USDC into the vault
+ * Deposit USDC via ERC-4626 `deposit`, or USDT/DAI via `depositAnyStablecoin` (swap + deposit).
  */
 export function useDeposit() {
   const { address } = useAccount();
-  const { writeContract, isPending, data: txHash } = useWriteContract();
+  const chainId = useChainId();
   const publicClient = usePublicClient();
+  const { writeContractAsync, isPending } = useWriteContract();
   const [hash, setHash] = useState<string | null>(null);
-  const [step, setStep] = useState<"idle" | "approving" | "depositing">("idle");
-  const [approveTxHash, setApproveTxHash] = useState<string | null>(null);
-  const [depositAmount, setDepositAmount] = useState<string>("");
-  
-  // Wait for approval to be mined
-  const { isLoading: isApproveConfirming } = useWaitForTransactionReceipt({
-    hash: approveTxHash ? (approveTxHash as `0x${string}`) : undefined,
-    query: {
-      enabled: !!approveTxHash,
-    },
-  });
+  const [step, setStep] = useState<DepositStep>("idle");
+
+  const vaultManagerAddress = useMemo(
+    () => getVaultManagerAddress(chainId),
+    [chainId]
+  );
+
+  const { data: swapRouterAddr, isPending: isSwapRouterLoading } =
+    useReadContract({
+      address: vaultManagerAddress ?? undefined,
+      abi: VAULT_MANAGER_ABI,
+      functionName: "swapRouter",
+      query: { enabled: !!vaultManagerAddress },
+    });
+
+  const zapperEnabled = useMemo(() => {
+    return (
+      !!swapRouterAddr &&
+      swapRouterAddr.toLowerCase() !== ZERO.toLowerCase()
+    );
+  }, [swapRouterAddr]);
+
+  const zapperStatus = useMemo((): "loading" | "on" | "off" => {
+    if (!vaultManagerAddress) return "off";
+    if (isSwapRouterLoading) return "loading";
+    return zapperEnabled ? "on" : "off";
+  }, [vaultManagerAddress, isSwapRouterLoading, zapperEnabled]);
 
   const depositIntoVault = useCallback(
-    (amount: string) => {
-      return new Promise<string>((resolve, reject) => {
-        if (!address || !publicClient) {
-          reject(new Error("Wallet not connected"));
-          return;
-        }
+    async (amount: string, asset: StablecoinId) => {
+      if (!address || !publicClient) {
+        throw new Error("Wallet not connected");
+      }
+      if (!vaultManagerAddress || vaultManagerAddress === ZERO) {
+        throw new Error("Vault not configured for this network");
+      }
 
-        const parsedAmount = parseUSDC(amount);
-        setDepositAmount(amount);
+      const meta = getStablecoinMeta(chainId, asset);
+      if (!meta) {
+        throw new Error("Unsupported network");
+      }
 
-        // Step 1: Approve USDC spending
-        setStep("approving");
-        writeContract(
-          {
-            address: BASE_SEPOLIA_ADDRESSES.usdc,
+      if ((asset === "USDT" || asset === "DAI") && !zapperEnabled) {
+        throw new Error(
+          "Zapper is not enabled on this vault. Deposit USDC or redeploy with a swap router."
+        );
+      }
+
+      const parsed = parseTokenAmount(amount, meta.decimals);
+
+      try {
+        if (asset === "USDC") {
+          setStep("approving");
+          const approveHash = await writeContractAsync({
+            address: meta.address,
             abi: USDC_ABI,
             functionName: "approve",
-            args: [BASE_SEPOLIA_ADDRESSES.vaultManager, parsedAmount],
-            gas: BigInt(100000), // Approval doesn't need much gas
-          },
-          {
-            onSuccess: (approvHash) => {
-              setApproveTxHash(approvHash);
-              
-              // Wait for approval to be mined, then proceed with deposit
-              const waitInterval = setInterval(async () => {
-                try {
-                  const receipt = await publicClient.getTransactionReceipt({
-                    hash: approvHash,
-                  });
+            args: [vaultManagerAddress, parsed],
+            gas: 100_000n,
+          });
+          await publicClient.waitForTransactionReceipt({ hash: approveHash });
 
-                  if (receipt && receipt.status === "success") {
-                    clearInterval(waitInterval);
-                    
-                    // Approval confirmed! Now do deposit with safe gas limit
-                    setStep("depositing");
-                    writeContract(
-                      {
-                        address: BASE_SEPOLIA_ADDRESSES.vaultManager,
-                        abi: VAULT_MANAGER_ABI,
-                        functionName: "deposit",
-                        args: [parsedAmount, address],
-                        gas: BigInt(800000), // Deposit is complex: ERC4626 + StrategyRouter + 2 protocol deposits
-                      },
-                      {
-                        onSuccess: (depositHash) => {
-                          setHash(depositHash);
-                          setStep("idle");
-                          resolve(depositHash); // Return the actual hash
-                        },
-                        onError: (err) => {
-                          setStep("idle");
-                          reject(err);
-                        },
-                      }
-                    );
-                  }
-                } catch (err) {
-                  console.debug("Waiting for approval...");
-                }
-              }, 2000); // Check every 2 seconds
+          setStep("depositing");
+          const depositHash = await writeContractAsync({
+            address: vaultManagerAddress,
+            abi: VAULT_MANAGER_ABI,
+            functionName: "deposit",
+            args: [parsed, address],
+            gas: 800_000n,
+          });
+          await publicClient.waitForTransactionReceipt({ hash: depositHash });
+          setHash(depositHash);
+          return depositHash;
+        }
 
-              // Timeout after 60 seconds
-              setTimeout(() => {
-                clearInterval(waitInterval);
-                setStep("idle");
-                reject(new Error("Approval confirmation timeout"));
-              }, 60000);
-            },
-            onError: (err) => {
-              setStep("idle");
-              reject(err);
-            },
-          }
-        );
-      });
+        setStep("approving");
+        const approveHash = await writeContractAsync({
+          address: meta.address,
+          abi: USDC_ABI,
+          functionName: "approve",
+          args: [vaultManagerAddress, parsed],
+          gas: 100_000n,
+        });
+        await publicClient.waitForTransactionReceipt({ hash: approveHash });
+
+        setStep("zapping");
+        const zapHash = await writeContractAsync({
+          address: vaultManagerAddress,
+          abi: VAULT_MANAGER_ABI,
+          functionName: "depositAnyStablecoin",
+          args: [meta.address, parsed],
+          gas: 1_200_000n,
+        });
+        await publicClient.waitForTransactionReceipt({ hash: zapHash });
+        setHash(zapHash);
+        return zapHash;
+      } finally {
+        setStep("idle");
+      }
     },
-    [address, publicClient, writeContract]
+    [
+      address,
+      chainId,
+      publicClient,
+      vaultManagerAddress,
+      writeContractAsync,
+      zapperEnabled,
+    ]
   );
+
+  const isLoading = isPending || step !== "idle";
 
   return {
     depositIntoVault,
-    isLoading: isPending || step !== "idle",
+    isLoading,
     hash,
     step,
+    zapperEnabled,
+    zapperStatus,
+    vaultManagerAddress,
   };
 }
 
@@ -119,8 +160,11 @@ export function useDeposit() {
  */
 export function useWithdraw() {
   const { address } = useAccount();
+  const chainId = useChainId();
   const { writeContract, isPending } = useWriteContract();
   const [hash, setHash] = useState<string | null>(null);
+
+  const vaultManagerAddress = getVaultManagerAddress(chainId);
 
   const withdraw = useCallback(
     (shares: string) => {
@@ -129,17 +173,20 @@ export function useWithdraw() {
           reject(new Error("Wallet not connected"));
           return;
         }
+        if (!vaultManagerAddress || vaultManagerAddress === ZERO) {
+          reject(new Error("Vault not configured for this network"));
+          return;
+        }
 
         const parsedShares = parseUSDC(shares);
 
-        // Redeem shares from vault
         writeContract(
           {
-            address: BASE_SEPOLIA_ADDRESSES.vaultManager,
+            address: vaultManagerAddress,
             abi: VAULT_MANAGER_ABI,
             functionName: "redeem",
             args: [parsedShares, address, address],
-            gas: BigInt(800000), // Redeem is complex: withdraws from 1-2 protocols + burn + transfer
+            gas: 800_000n,
           },
           {
             onSuccess: (txHash) => {
@@ -153,7 +200,7 @@ export function useWithdraw() {
         );
       });
     },
-    [address, writeContract]
+    [address, chainId, vaultManagerAddress, writeContract]
   );
 
   return {

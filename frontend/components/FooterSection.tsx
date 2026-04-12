@@ -14,7 +14,7 @@ export function FooterSection() {
             Novis
           </p>
           <p className="mt-2 text-xs text-neutral-500">
-            DeFi Yield Optimizer · Base · USDC
+            DeFi Yield Optimizer · Base · USDC / USDT / DAI
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-8 text-xs font-medium text-neutral-600">

@@ -1,4 +1,5 @@
 import { StatsBalanceCards } from "@/components/StatsBalanceCards";
+import { StablecoinBalancesStrip } from "@/components/StablecoinBalancesStrip";
 import { DepositWithdrawPanel } from "@/components/DepositWithdrawPanel";
 
 export default function BuyPage() {
@@ -13,13 +14,17 @@ export default function BuyPage() {
                         Buy
                     </p>
                     <h1 className="mt-3 text-center font-display text-3xl font-extrabold tracking-tight text-brand-black sm:text-4xl">
-                        Deposit USDC
+                        Deposit stablecoins
                     </h1>
                     <p className="mx-auto mt-4 max-w-md text-center text-sm leading-relaxed text-neutral-600">
-                        Deposit USDC into the vault to mint shares. Your funds are
-                        automatically allocated across Aave v3 and Compound v3 for optimized
-                        yield.
+                        Deposit USDC, USDT, or DAI into the vault to mint shares (USDT/DAI are
+                        swapped to USDC on-chain when the zapper is enabled). Funds are
+                        allocated across Aave v3 and Compound v3 for optimized yield—the same
+                        blended APY applies in USD terms after conversion.
                     </p>
+                    <div className="mx-auto mt-8 max-w-xl">
+                        <StablecoinBalancesStrip selectOnClick />
+                    </div>
                     <div className="mt-10">
                         <DepositWithdrawPanel variant="deposit-only" />
                     </div>

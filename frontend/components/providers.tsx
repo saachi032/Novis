@@ -6,6 +6,7 @@ import { WagmiProvider } from "wagmi";
 import { useState, type ReactNode } from "react";
 import { wagmiConfig } from "@/lib/wagmi";
 import { WalletDisplayNameProvider } from "@/components/wallet/WalletDisplayNameContext";
+import { StablecoinProvider } from "@/lib/context/StablecoinContext";
 
 import "@rainbow-me/rainbowkit/styles.css";
 
@@ -22,7 +23,9 @@ export function Providers({ children }: { children: ReactNode }) {
             borderRadius: "large",
           })}
         >
-          <WalletDisplayNameProvider>{children}</WalletDisplayNameProvider>
+          <WalletDisplayNameProvider>
+            <StablecoinProvider>{children}</StablecoinProvider>
+          </WalletDisplayNameProvider>
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>

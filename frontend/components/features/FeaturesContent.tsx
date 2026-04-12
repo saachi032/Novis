@@ -17,9 +17,9 @@ export function FeaturesContent() {
           What Novis provides
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-center text-sm leading-relaxed text-neutral-600 sm:text-base">
-          Automated USDC yield on Base across Aave and Compound, with clear
-          telemetry, stablecoin context, and live reference markets — all in one
-          editorial layout.
+          Automated stablecoin yield on Base (USDC, USDT, DAI) across Aave and
+          Compound, with clear telemetry, peg context, and live reference markets
+          — all in one editorial layout.
         </p>
 
         <div className="mt-14">

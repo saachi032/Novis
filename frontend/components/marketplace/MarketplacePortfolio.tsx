@@ -114,7 +114,7 @@ export function MarketplacePortfolio() {
               Total vault assets: ${parseFloat(totalAssets || "0").toFixed(2)}
             </>
           ) : (
-            "No investments yet. Connect your wallet and deposit USDC to start earning yield."
+            "No investments yet. Connect your wallet and deposit USDC, USDT, or DAI to start earning yield."
           )}
         </p>
         {hasPosition ? (
@@ -162,7 +162,7 @@ export function MarketplacePortfolio() {
         ) : (
           <div className="mt-4 rounded-2xl border border-brand-gray/40 bg-brand-bg/30 p-6 text-center">
             <p className="text-xs text-neutral-600">
-              Your vault positions will appear here once you deposit USDC.
+              Your vault positions will appear here once you deposit a supported stablecoin.
             </p>
           </div>
         )}

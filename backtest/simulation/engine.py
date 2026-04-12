@@ -57,6 +57,7 @@ class SimulationEngine:
 
         snapshots: list[PortfolioSnapshot] = []
         row_extras: list[tuple[bool, str]] = []
+        morpho_apy_path: list[float] = []
         switch_count = 0
         for timestamp, row in series.iterrows():
             switched = False
@@ -69,23 +70,29 @@ class SimulationEngine:
                 if not interval_ok:
                     switch_reason = "Rebalance interval not elapsed"
                 else:
-                    candidate_protocol = self._candidate(current_protocol)
-                    decision = self.switcher.decide(
-                        current_protocol=current_protocol,
-                        current_apy=row.get(f"{current_protocol}_apy", 0.0),
-                        candidate_protocol=candidate_protocol,
-                        candidate_apy=row.get(f"{candidate_protocol}_apy", 0.0),
-                        capital=capital,
-                        now=timestamp,
-                        last_switch=last_switch,
-                    )
-                    switch_reason = decision.reason
-                    if decision.should_switch:
-                        switched = True
-                        capital -= self.config.gas_cost_usd
-                        current_protocol = decision.target
-                        last_switch = timestamp
-                        switch_count += 1
+                    apy_by_protocol = {
+                        p: float(row.get(f"{p}_apy", 0.0)) for p in self.protocols
+                    }
+                    best_protocol = max(self.protocols, key=lambda p: apy_by_protocol[p])
+                    if best_protocol == current_protocol:
+                        switch_reason = "Already on highest APY"
+                    else:
+                        decision = self.switcher.decide(
+                            current_protocol=current_protocol,
+                            current_apy=apy_by_protocol[current_protocol],
+                            candidate_protocol=best_protocol,
+                            candidate_apy=apy_by_protocol[best_protocol],
+                            capital=capital,
+                            now=timestamp,
+                            last_switch=last_switch,
+                        )
+                        switch_reason = decision.reason
+                        if decision.should_switch:
+                            switched = True
+                            capital -= self.config.gas_cost_usd
+                            current_protocol = decision.target
+                            last_switch = timestamp
+                            switch_count += 1
             else:
                 switch_reason = ""
             apy_today = row.get(f"{current_protocol}_apy", 0.0)
@@ -99,6 +106,7 @@ class SimulationEngine:
                 )
             )
             row_extras.append((switched, switch_reason))
+            morpho_apy_path.append(float(row.get("morpho_apy", 0.0)))
         risk = str(self.config.risk_level)
         interval_days = int(self.config.rebalance_interval_days)
         history = pd.DataFrame(
@@ -112,8 +120,11 @@ class SimulationEngine:
                     "switch_reason": switch_reason,
                     "risk_level": risk,
                     "rebalance_interval_days": interval_days,
+                    "morpho_apy": m_apy,
                 }
-                for snap, (switched, switch_reason) in zip(snapshots, row_extras)
+                for snap, (switched, switch_reason), m_apy in zip(
+                    snapshots, row_extras, morpho_apy_path
+                )
             ]
         )
         history = history.set_index("timestamp")
@@ -121,12 +132,6 @@ class SimulationEngine:
         profit_usd = final_capital - self.config.initial_capital
         profit_pct = (profit_usd / self.config.initial_capital) * 100.0
         return SimulationResult(label, final_capital, profit_usd, profit_pct, switch_count, history)
-
-    def _candidate(self, current: str) -> str:
-        others = [protocol for protocol in self.protocols if protocol != current]
-        if not others:
-            return current
-        return others[0]
 
     def run_dynamic(self, series: pd.DataFrame, initial_protocol: str) -> SimulationResult:
         return self._simulate("dynamic", series, initial_protocol, allow_switch=True)

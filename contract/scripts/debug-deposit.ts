@@ -99,7 +99,7 @@ async function main() {
   console.log(`aaveAPY=${await strategyRouter.read.getAaveAPY()}`);
   console.log(`compoundAPY=${await strategyRouter.read.getCompoundAPY()}`);
   const apys = await strategyRouter.read.getCurrentAPYs();
-  console.log(`currentAPYs=[${apys[0].toString()}, ${apys[1].toString()}]`);
+  console.log(`currentAPYs=[${apys[0].toString()}, ${apys[1].toString()}, ${apys[2].toString()}]`);
 }
 
 main().catch((error) => {

@@ -25,6 +25,7 @@ def align_charts(
     charts: Mapping[str, Sequence[Mapping[str, float]]],
     lookback_days: int = 365,
 ) -> pd.DataFrame:
+    """Merge one or more protocol chart payloads (e.g. aave, compound, morpho) on a daily index."""
     series = {name: _chart_to_series(chart) for name, chart in charts.items()}
     combined = pd.DataFrame(series)
     if combined.empty:

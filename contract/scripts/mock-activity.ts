@@ -63,7 +63,7 @@ async function main() {
   await waitForHash(strategyHash);
   console.log(`setStrategy tx: ${strategyHash}`);
 
-  const mockApyHash = await strategyRouter.write.setMockApys([420, 730]);
+  const mockApyHash = await strategyRouter.write.setMockApys([420, 730, 550]);
   await waitForHash(mockApyHash);
   console.log(`setMockApys tx: ${mockApyHash}`);
 

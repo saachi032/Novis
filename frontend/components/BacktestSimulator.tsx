@@ -286,7 +286,7 @@ export function BacktestSimulator({ initialCapital = 1000 }: { initialCapital?: 
                       tickFormatter={(v) => `${Number(v).toFixed(1)}%`}
                     />
                     <Tooltip
-                      formatter={(v: any) => [`${Number(v ?? 0).toFixed(3)}%`, ""]}
+                      formatter={(v: number | undefined) => [`${Number(v ?? 0).toFixed(3)}%`, ""]}
                       labelFormatter={(l) => l}
                       contentStyle={{ borderRadius: 12, border: "1px solid #e5e7eb" }}
                     />

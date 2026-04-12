@@ -21,6 +21,8 @@ def normalize_protocol(protocol: str) -> str:
         return "aave"
     if "compound" in lowered:
         return "compound"
+    if "morpho" in lowered:
+        return "morpho"
     return lowered
 
 
@@ -43,8 +45,8 @@ def main(argv: Sequence[str] | None = None) -> None:
 
     manifest_data = load_manifest(Path(args.manifest))
     descriptors = filter_usdc_aave_compound(manifest_data)
-    if len(descriptors) < 2:
-        raise SystemExit("failed to locate both Aave and Compound USDC pools in the manifest")
+    if len(descriptors) < 3:
+        raise SystemExit("failed to locate Aave, Compound, and Morpho USDC pools in the manifest")
 
     chart_client = ChartClient(Path(args.cache_dir))
     charts: dict[str, list[dict[str, float]]] = {}
@@ -69,13 +71,14 @@ def main(argv: Sequence[str] | None = None) -> None:
         rebalance_interval_days=max(1, args.rebalance_interval_days),
     )
     switcher = ThresholdSwitcher(config)
-    engine = SimulationEngine(config, switcher, protocols=["aave", "compound"])
+    engine = SimulationEngine(config, switcher, protocols=["aave", "compound", "morpho"])
 
     dynamic = engine.run_dynamic(aligned, initial_protocol="aave")
     static_aave = engine.run_static(aligned, "aave")
     static_compound = engine.run_static(aligned, "compound")
+    static_morpho = engine.run_static(aligned, "morpho")
 
-    results = [dynamic, static_aave, static_compound]
+    results = [dynamic, static_aave, static_compound, static_morpho]
     summarize(results)
     plot_growth(results, Path(args.plot_path))
     for result in results:

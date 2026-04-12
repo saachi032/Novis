@@ -18,6 +18,12 @@ def plot_growth(results: Iterable[SimulationResult], output_path: Path | None = 
         series = result.history["capital"]
         label = f"{result.label} (${result.final_capital:,.0f})"
         plt.plot(series.index, series.values, label=label)
+        if result.label == "dynamic" and "switched" in result.history.columns:
+            switched = result.history["switched"]
+            if switched.any():
+                ts = result.history.index[switched]
+                vals = result.history.loc[switched, "capital"]
+                plt.scatter(ts, vals, color="#059669", s=22, zorder=3, label="rebalance (gas paid)")
 
     plt.legend()
     plt.xlabel("Date")

@@ -10,14 +10,14 @@ def test_threshold_blocks_small_delta() -> None:
     decision = switcher.decide(
         current_protocol="aave",
         current_apy=0.01,
-        candidate_protocol="morpho",
+        candidate_protocol="compound",
         candidate_apy=0.015,
         capital=1_000.0,
         now=pd.Timestamp("2025-01-10"),
         last_switch=None,
     )
     assert not decision.should_switch
-    assert decision.reason == "below threshold"
+    assert decision.reason == "APY difference below threshold"
 
 
 def test_threshold_obeys_cooldown() -> None:
@@ -28,14 +28,14 @@ def test_threshold_obeys_cooldown() -> None:
     decision = switcher.decide(
         current_protocol="aave",
         current_apy=0.01,
-        candidate_protocol="morpho",
+        candidate_protocol="compound",
         candidate_apy=0.05,
         capital=1_000.0,
         now=now,
         last_switch=last_switch,
     )
     assert not decision.should_switch
-    assert decision.reason == "cooldown"
+    assert decision.reason == "Cooldown not passed"
 
 
 def test_threshold_switches_when_profitable() -> None:
@@ -45,11 +45,11 @@ def test_threshold_switches_when_profitable() -> None:
     decision = switcher.decide(
         current_protocol="aave",
         current_apy=0.02,
-        candidate_protocol="morpho",
+        candidate_protocol="compound",
         candidate_apy=0.08,
         capital=1_000.0,
         now=now,
         last_switch=None,
     )
     assert decision.should_switch
-    assert decision.reason == "profitable"
+    assert decision.reason == "Switched: projected gain > gas"

@@ -49,27 +49,45 @@ class SimulationEngine:
         current_protocol = initial_protocol
         last_switch: pd.Timestamp | None = None
         if not series.index.empty:
-            last_switch = series.index[0] - timedelta(days=self.config.cooldown_days)
+            span = max(
+                self.switcher.effective_cooldown_days(),
+                max(1, int(self.config.rebalance_interval_days)),
+            )
+            last_switch = series.index[0] - timedelta(days=span)
 
         snapshots: list[PortfolioSnapshot] = []
+        row_extras: list[tuple[bool, str]] = []
         switch_count = 0
         for timestamp, row in series.iterrows():
+            switched = False
+            switch_reason = ""
             if allow_switch:
-                candidate_protocol = self._candidate(current_protocol)
-                decision = self.switcher.decide(
-                    current_protocol=current_protocol,
-                    current_apy=row.get(f"{current_protocol}_apy", 0.0),
-                    candidate_protocol=candidate_protocol,
-                    candidate_apy=row.get(f"{candidate_protocol}_apy", 0.0),
-                    capital=capital,
-                    now=timestamp,
-                    last_switch=last_switch,
+                interval_ok = last_switch is None or (
+                    (timestamp - last_switch)
+                    >= timedelta(days=max(1, int(self.config.rebalance_interval_days)))
                 )
-                if decision.should_switch:
-                    capital -= self.config.gas_cost_usd
-                    current_protocol = decision.target
-                    last_switch = timestamp
-                    switch_count += 1
+                if not interval_ok:
+                    switch_reason = "Rebalance interval not elapsed"
+                else:
+                    candidate_protocol = self._candidate(current_protocol)
+                    decision = self.switcher.decide(
+                        current_protocol=current_protocol,
+                        current_apy=row.get(f"{current_protocol}_apy", 0.0),
+                        candidate_protocol=candidate_protocol,
+                        candidate_apy=row.get(f"{candidate_protocol}_apy", 0.0),
+                        capital=capital,
+                        now=timestamp,
+                        last_switch=last_switch,
+                    )
+                    switch_reason = decision.reason
+                    if decision.should_switch:
+                        switched = True
+                        capital -= self.config.gas_cost_usd
+                        current_protocol = decision.target
+                        last_switch = timestamp
+                        switch_count += 1
+            else:
+                switch_reason = ""
             apy_today = row.get(f"{current_protocol}_apy", 0.0)
             capital *= self._daily_growth(apy_today)
             snapshots.append(
@@ -80,15 +98,24 @@ class SimulationEngine:
                     switches=switch_count,
                 )
             )
-        history = pd.DataFrame([
-            {
-                "timestamp": snap.timestamp,
-                "capital": snap.capital,
-                "protocol": snap.current_protocol,
-                "switches": snap.switches,
-            }
-            for snap in snapshots
-        ])
+            row_extras.append((switched, switch_reason))
+        risk = str(self.config.risk_level)
+        interval_days = int(self.config.rebalance_interval_days)
+        history = pd.DataFrame(
+            [
+                {
+                    "timestamp": snap.timestamp,
+                    "capital": snap.capital,
+                    "protocol": snap.current_protocol,
+                    "switches": snap.switches,
+                    "switched": switched,
+                    "switch_reason": switch_reason,
+                    "risk_level": risk,
+                    "rebalance_interval_days": interval_days,
+                }
+                for snap, (switched, switch_reason) in zip(snapshots, row_extras)
+            ]
+        )
         history = history.set_index("timestamp")
         final_capital = capital
         profit_usd = final_capital - self.config.initial_capital

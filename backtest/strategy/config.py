@@ -1,4 +1,6 @@
 """Configuration for the threshold-based switching strategy."""
+from __future__ import annotations
+
 from dataclasses import dataclass
 
 
@@ -9,3 +11,5 @@ class StrategyConfig:
     cooldown_days: int = 1
     time_window_days: int = 7
     initial_capital: float = 1_000.0
+    risk_level: str = "medium"
+    rebalance_interval_days: int = 1

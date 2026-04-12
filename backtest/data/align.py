@@ -33,5 +33,6 @@ def align_charts(
     start = end - timedelta(days=lookback_days)
     windowed = combined.loc[start:end].copy()
     windowed = windowed.rename(columns=lambda name: f"{name.lower()}_apy")
-    windowed = windowed.dropna()
+    windowed = windowed.ffill().bfill(limit=7)
+    windowed = windowed.dropna(how="any")
     return windowed

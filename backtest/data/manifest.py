@@ -1,4 +1,6 @@
 """Helpers for filtering and describing pools from the DefiLlama manifest."""
+from __future__ import annotations
+
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, List
@@ -19,37 +21,47 @@ def load_manifest(path: Path) -> List[dict]:
     return payload.get("data", [])
 
 
-def filter_usdc_protocols(
+def _best_pool_for_prefixes(
     manifest: Iterable[dict],
-    protocols: Iterable[str] = ("aave-v3", "morpho-v1"),
-    symbol: str = "USDC",
-) -> List[PoolDescriptor]:
+    symbol: str,
+    protocol_label: str,
+    project_prefixes: tuple[str, ...],
+) -> PoolDescriptor | None:
     symbol = symbol.upper()
-    wanted = {protocol.lower(): protocol for protocol in protocols}
-    pools_per_protocol: dict[str, list[dict]] = {protocol: [] for protocol in wanted.values()}
-
+    candidates: list[dict] = []
     for entry in manifest:
-        project = (entry.get("project") or "").lower()
         entry_symbol = (entry.get("symbol") or "").upper()
         if entry_symbol != symbol:
             continue
-        for key, original in wanted.items():
-            if project.startswith(key):
-                pools_per_protocol[original].append(entry)
-                break
+        project = (entry.get("project") or "").lower()
+        if any(project.startswith(prefix) for prefix in project_prefixes):
+            candidates.append(entry)
+    if not candidates:
+        return None
+    winner = max(candidates, key=lambda item: item.get("tvlUsd") or 0)
+    return PoolDescriptor(
+        pool_id=winner["pool"],
+        protocol=protocol_label,
+        symbol=symbol,
+        chain=winner.get("chain", ""),
+    )
 
-    descriptors: list[PoolDescriptor] = []
-    for protocol, entries in pools_per_protocol.items():
-        if not entries:
-            continue
-        winner = max(entries, key=lambda item: item.get("tvlUsd") or 0)
-        descriptors.append(
-            PoolDescriptor(
-                pool_id=winner["pool"],
-                protocol=protocol,
-                symbol=symbol,
-                chain=winner.get("chain", ""),
-            )
-        )
 
-    return descriptors
+def filter_usdc_aave_compound(
+    manifest: Iterable[dict],
+    symbol: str = "USDC",
+) -> List[PoolDescriptor]:
+    """Pick highest-TVL USDC pools for Aave v3 and Compound (v3 / v2 naming on DefiLlama)."""
+    aave = _best_pool_for_prefixes(manifest, symbol, "aave-v3", ("aave-v3",))
+    compound = _best_pool_for_prefixes(
+        manifest,
+        symbol,
+        "compound-v3",
+        ("compound-v3", "compound-v2", "compound"),
+    )
+    out: list[PoolDescriptor] = []
+    if aave:
+        out.append(aave)
+    if compound:
+        out.append(compound)
+    return out

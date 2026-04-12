@@ -7,7 +7,7 @@ from typing import Sequence
 
 from backtest.data.align import align_charts
 from backtest.data.chart_client import ChartClient
-from backtest.data.manifest import load_manifest, filter_usdc_protocols
+from backtest.data.manifest import load_manifest, filter_usdc_aave_compound
 from backtest.reports.output import export_history, summarize
 from backtest.simulation.engine import SimulationEngine
 from backtest.strategy.config import StrategyConfig
@@ -19,8 +19,8 @@ def normalize_protocol(protocol: str) -> str:
     lowered = protocol.lower()
     if "aave" in lowered:
         return "aave"
-    if "morpho" in lowered:
-        return "morpho"
+    if "compound" in lowered:
+        return "compound"
     return lowered
 
 
@@ -35,14 +35,16 @@ def main(argv: Sequence[str] | None = None) -> None:
     parser.add_argument("--apy-threshold", type=float, default=0.001)
     parser.add_argument("--cooldown-days", type=int, default=1)
     parser.add_argument("--time-window-days", type=int, default=7)
+    parser.add_argument("--risk-level", default="medium", choices=("low", "medium", "high"))
+    parser.add_argument("--rebalance-interval-days", type=int, default=1)
     parser.add_argument("--plot-path", default="plots/capital_growth.png")
     parser.add_argument("--history-dir", default="histories")
     args = parser.parse_args(argv)
 
     manifest_data = load_manifest(Path(args.manifest))
-    descriptors = filter_usdc_protocols(manifest_data)
+    descriptors = filter_usdc_aave_compound(manifest_data)
     if len(descriptors) < 2:
-        raise SystemExit("failed to locate both Aave and Morpho USDC pools in the manifest")
+        raise SystemExit("failed to locate both Aave and Compound USDC pools in the manifest")
 
     chart_client = ChartClient(Path(args.cache_dir))
     charts: dict[str, list[dict[str, float]]] = {}
@@ -63,15 +65,17 @@ def main(argv: Sequence[str] | None = None) -> None:
         cooldown_days=args.cooldown_days,
         time_window_days=args.time_window_days,
         initial_capital=args.initial_capital,
+        risk_level=args.risk_level,
+        rebalance_interval_days=max(1, args.rebalance_interval_days),
     )
     switcher = ThresholdSwitcher(config)
-    engine = SimulationEngine(config, switcher, protocols=["aave", "morpho"])
+    engine = SimulationEngine(config, switcher, protocols=["aave", "compound"])
 
     dynamic = engine.run_dynamic(aligned, initial_protocol="aave")
     static_aave = engine.run_static(aligned, "aave")
-    static_morpho = engine.run_static(aligned, "morpho")
+    static_compound = engine.run_static(aligned, "compound")
 
-    results = [dynamic, static_aave, static_morpho]
+    results = [dynamic, static_aave, static_compound]
     summarize(results)
     plot_growth(results, Path(args.plot_path))
     for result in results:

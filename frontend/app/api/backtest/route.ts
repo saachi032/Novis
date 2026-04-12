@@ -19,9 +19,15 @@ type PoolEntry = {
   pool?: string;
   apy?: number | null;
   tvlUsd?: number | null;
+  chain?: string;
+  underlyingTokens?: string[] | null;
 };
 
-type ChartPoint = { timestamp?: number; apy?: number | null };
+type ChartPoint = {
+  timestamp?: number;
+  apy?: number | null;
+  apyBase?: number | null;
+};
 
 type ApiStrategy = {
   label: string;
@@ -113,9 +119,29 @@ function bestCompoundPool(manifest: PoolEntry[]): PoolEntry | null {
   );
 }
 
-/** Morpho Blue / MetaMorpho style rows on DefiLlama (project morpho, morpho-v1, …). */
-function bestMorphoPool(manifest: PoolEntry[]): PoolEntry | null {
-  return bestPool(manifest, (p) => p === "morpho" || p.startsWith("morpho-"));
+/**
+ * Morpho on DefiLlama: highest-TVL pool on the same chain as the reference (Aave) pool, for the same USDC asset.
+ * MetaMorpho vaults use symbols like GTUSDCP, not "USDC"; we match via overlapping underlyingTokens.
+ */
+function bestMorphoPool(manifest: PoolEntry[], reference: PoolEntry): PoolEntry | null {
+  const refChain = reference.chain ?? "";
+  const refUnder = new Set((reference.underlyingTokens ?? []).map((t) => (t || "").toLowerCase()));
+  const candidates = manifest.filter((entry) => {
+    if ((entry.chain || "") !== refChain) return false;
+    const proj = (entry.project || "").toLowerCase();
+    if (!proj.startsWith("morpho")) return false;
+    const sym = (entry.symbol || "").toUpperCase();
+    const ut = (entry.underlyingTokens ?? []).map((t) => (t || "").toLowerCase());
+    if (sym === "USDC") return true;
+    if (refUnder.size > 0 && ut.some((t) => refUnder.has(t))) return true;
+    return false;
+  });
+  if (!candidates.length) return null;
+  return candidates.reduce((best, current) => {
+    const bestTvl = best.tvlUsd ?? 0;
+    const currentTvl = current.tvlUsd ?? 0;
+    return currentTvl > bestTvl ? current : best;
+  });
 }
 
 function toDecimal(apy?: number | null): number {
@@ -130,12 +156,26 @@ async function fetchChart(pool: string): Promise<ChartPoint[]> {
   return body.data ?? [];
 }
 
+function chartApyPercent(p: ChartPoint): number | null {
+  if (p.apy != null && !Number.isNaN(Number(p.apy))) return Number(p.apy);
+  if (p.apyBase != null && !Number.isNaN(Number(p.apyBase))) return Number(p.apyBase);
+  return null;
+}
+
+function toUtcDayMs(ts: number): string {
+  // DefiLlama usually uses ms; if value looks like seconds, scale up.
+  const ms = ts < 1e12 ? ts * 1000 : ts;
+  return new Date(ms).toISOString().slice(0, 10);
+}
+
 function bucketDaily(points: ChartPoint[]): Map<string, number> {
   const m = new Map<string, number>();
   for (const p of points) {
-    if (p.timestamp == null || p.apy == null) continue;
-    const day = new Date(p.timestamp).toISOString().slice(0, 10);
-    m.set(day, Number(p.apy) / 100);
+    if (p.timestamp == null) continue;
+    const apyPct = chartApyPercent(p);
+    if (apyPct == null) continue;
+    const day = toUtcDayMs(p.timestamp);
+    m.set(day, apyPct / 100);
   }
   return m;
 }
@@ -292,7 +332,7 @@ export async function GET(request: Request) {
     const manifest = await loadManifest();
     const aavePool = bestAavePool(manifest);
     const compoundPool = bestCompoundPool(manifest);
-    const morphoPool = bestMorphoPool(manifest);
+    const morphoPool = aavePool ? bestMorphoPool(manifest, aavePool) : null;
 
     if (!aavePool?.pool || !compoundPool?.pool || !morphoPool?.pool) {
       return NextResponse.json(

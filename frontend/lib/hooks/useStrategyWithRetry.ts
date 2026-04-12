@@ -16,11 +16,11 @@ export function useStrategyWithRetry() {
       for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
         try {
           // Attempt to set strategy
-          await baseSetStrategy(investmentId, riskLevel, durationKey);
+          const txHash = await baseSetStrategy(investmentId, riskLevel, durationKey);
           
           // Success!
-          console.log(`✓ Strategy set on attempt ${attempt + 1}`);
-          return;
+          console.log(`✓ Strategy set on attempt ${attempt + 1}`, txHash);
+          return txHash;
         } catch (err) {
           lastError = err instanceof Error ? err : new Error(String(err));
           const errorMsg = lastError.message || "";
@@ -35,12 +35,13 @@ export function useStrategyWithRetry() {
             errorMsg.includes("gas") ||
             errorMsg.includes("timeout") ||
             errorMsg.includes("network") ||
-            errorMsg.includes("TIMEOUT");
+            errorMsg.includes("TIMEOUT") ||
+            errorMsg.includes("failed");
 
           if (isRetryableError && attempt < MAX_RETRIES) {
             // Wait before retrying (exponential backoff)
             const waitTime = 2000 * (attempt + 1);
-            console.log(`Retrying in ${waitTime}ms...`);
+            console.log(`Retrying strategy in ${waitTime}ms... (attempt ${attempt + 2}/${MAX_RETRIES + 1})`);
             await new Promise((resolve) => setTimeout(resolve, waitTime));
             continue;
           }
@@ -59,7 +60,7 @@ export function useStrategyWithRetry() {
       );
       
       // Return silently - don't block the user
-      return;
+      return null;
     },
     [baseSetStrategy]
   );

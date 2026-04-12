@@ -41,48 +41,38 @@ export const DURATION_TO_ENUM = {
  */
 export function useSetInvestmentStrategy() {
   const { address } = useAccount();
-  const { writeContract } = useWriteContract();
+  const { writeContractAsync } = useWriteContract();
 
   const setInvestmentStrategy = useCallback(
-    (investmentId: string, riskLevel: RiskLevel, durationKey: DurationKey) => {
-      return new Promise<void>((resolve, reject) => {
-        if (!address) {
-          reject(new Error("Wallet not connected"));
-          return;
-        }
+    async (investmentId: string, riskLevel: RiskLevel, durationKey: DurationKey) => {
+      if (!address) {
+        throw new Error("Wallet not connected");
+      }
 
-        // Map risk level and duration to contract enum values
-        const riskEnum = RISK_TO_ENUM[riskLevel];
-        const durationEnum = DURATION_TO_ENUM[durationKey];
+      // Map risk level and duration to contract enum values
+      const riskEnum = RISK_TO_ENUM[riskLevel];
+      const durationEnum = DURATION_TO_ENUM[durationKey];
 
-        try {
-          writeContract(
-            {
-              address: BASE_SEPOLIA_ADDRESSES.riskRegistry,
-              abi: RISK_REGISTRY_ABI,
-              functionName: "setStrategy",
-              args: [riskEnum, durationEnum],
-              gas: BigInt(200000), // Strategy update is simple - update 2 state vars
-            },
-            {
-              onSuccess: () => {
-                console.log("Strategy set successfully");
-                resolve();
-              },
-              onError: (err) => {
-                const errorMsg = err instanceof Error ? err.message : "Unknown error";
-                console.error("Strategy setting error:", errorMsg);
-                reject(new Error(errorMsg));
-              },
-            }
-          );
-        } catch (err) {
-          const errorMsg = err instanceof Error ? err.message : "Failed to set strategy";
-          reject(new Error(errorMsg));
-        }
-      });
+      try {
+        console.log(`Setting strategy: risk=${riskLevel}, duration=${durationKey}`);
+        
+        const txHash = await writeContractAsync({
+          address: BASE_SEPOLIA_ADDRESSES.riskRegistry,
+          abi: RISK_REGISTRY_ABI,
+          functionName: "setStrategy",
+          args: [riskEnum, durationEnum],
+          gas: BigInt(200000), // Strategy update is simple - update 2 state vars
+        });
+        
+        console.log("Strategy set successfully, txHash:", txHash);
+        return txHash;
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : "Failed to set strategy";
+        console.error("Strategy setting error:", errorMsg);
+        throw new Error(errorMsg);
+      }
     },
-    [address, writeContract]
+    [address, writeContractAsync]
   );
 
   return {

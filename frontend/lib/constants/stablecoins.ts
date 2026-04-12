@@ -46,8 +46,7 @@ export const BASE_SEPOLIA_STABLECOINS = {
   get usdt() {
     return sepoliaUsdtAddressForTx();
   },
-  dai: "0xEfaD718634B87C59fdc9eAb27F0AF0543c939dA5", // Base Sepolia DAI testnet
-  mockDai: "0x89d50c47066b207d68a1a0decff41ebbdda441a2", // Fallback MockDAI for testing
+  dai: "0x89d50c47066b207d68a1a0decff41ebbdda441a2", // MockDAI - where your 1000 DAI was minted
 } as const;
 
 export type StablecoinId = "USDC" | "USDT" | "DAI";

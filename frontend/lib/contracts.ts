@@ -1,28 +1,20 @@
 // Network: Base Sepolia
-// Contract Addresses from Latest Deployment (April 12, 2026)
-// Updated with USDT/DAI swap router support
+// Contract Addresses from Latest Deployment (v16 - USDC Only, No Strategy Requirement)
+// ✅ deposit(), depositAnyStablecoin(), mint() all working with USDC only
 export const BASE_SEPOLIA_ADDRESSES = {
-  // Stablecoins
   usdc: '0x036CbD53842c5426634e7929541eC2318f3dCF7e' as const,
   usdt: '0x0a215D8ba66387DCA84B284D18c3B4ec3de6E54a' as const,
-  dai: '0xEfaD718634B87C59fdc9eAb27F0AF0543c939dA5' as const,
+  dai: '0x89d50c47066b207d68a1a0decff41ebbdda441a2' as const,
   mockDai: '0x89d50c47066b207d68a1a0decff41ebbdda441a2' as const,
-  
-  // Core Vault Contracts
-  vaultManager: '0xd3dba0060a5fdade7db4fd2613cbe25a388d94e1' as const,
+  vaultManager: '0x2df15b2cde939d31b62136fe1fe8ee595a2c357b' as const,
   strategyRouter: '0xa75a715818aef85c3a5850cdf70c82c30c2487cd' as const,
   riskRegistry: '0x745936b6ec8e9037c042623029cd473b7ae01144' as const,
-  feeCollector: '0xf860d533b2228ca8207c5af3912f90f34cd10c22' as const,
-  
-  // Protocol Integrations
+  feeCollector: '0xe885263cb6cd46632da046bb5a293aa3a630be4a' as const,
   aavePool: '0x8bAB6d1b75f19e9eD9fCe8b9BD338844fF79aE27' as const,
   compoundComet: '0xc3d688b66703497DAa19211E0b686300185341f5' as const,
-  
-  // Swap Router (USDT/DAI → USDC)
   swapRouter: '0x5969f3cfc1ffdfa22c779807aaf32033603f8be7' as const,
 } as const;
 
-/** Replace `vaultManager` after Base mainnet deployment. */
 export const BASE_MAINNET_ADDRESSES = {
   vaultManager: "0x0000000000000000000000000000000000000000" as const,
   usdc: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as const,

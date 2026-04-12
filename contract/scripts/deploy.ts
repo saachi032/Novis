@@ -61,11 +61,20 @@ async function main() {
   ]);
   console.log(`StrategyRouter: ${strategyRouter.address}`);
 
+  // Deploy SimpleSwapRouter for USDT/DAI zapping
+  const swapRouter = await viem.deployContract("SimpleSwapRouter", []);
+  console.log(`SimpleSwapRouter: ${swapRouter.address}`);
+
+  // Use provided addresses or defaults for Base Sepolia testnet
   const swapRouterAddress = getAddress(
-    optionalAddress("SWAP_ROUTER_ADDRESS", "0x0000000000000000000000000000000000000000")
+    optionalAddress("SWAP_ROUTER_ADDRESS", swapRouter.address)
   );
-  const usdtAddress = getAddress(optionalAddress("USDT_ADDRESS", "0x0000000000000000000000000000000000000000"));
-  const daiAddress = getAddress(optionalAddress("DAI_ADDRESS", "0x0000000000000000000000000000000000000000"));
+  const usdtAddress = getAddress(
+    optionalAddress("USDT_ADDRESS", "0x0a215D8ba66387DCA84B284D18c3B4ec3de6E54a") // Base Sepolia USDT
+  );
+  const daiAddress = getAddress(
+    optionalAddress("DAI_ADDRESS", "0xEfaD718634B87C59fdc9eAb27F0AF0543c939dA5") // Base Sepolia DAI
+  );
 
   const vaultManager = await viem.deployContract("VaultManager", [
     usdcAddress,

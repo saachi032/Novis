@@ -6,11 +6,20 @@
   "keeperAddress": "0x73Fa5dBc79e5e9c46C2ce74763F697B6b7C8fD7a",
   "addresses": {
     "usdc": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "usdt": "0x0a215D8ba66387DCA84B284D18c3B4ec3de6E54a",
+    "dai": "0xEfaD718634B87C59fdc9eAb27F0AF0543c939dA5",
+    "mockDai": "0x89d50c47066b207d68a1a0decff41ebbdda441a2",
     "aavePool": "0x8bAB6d1b75f19e9eD9fCe8b9BD338844fF79aE27",
     "compoundComet": "0xc3d688b66703497DAa19211E0b686300185341f5",
     "riskRegistry": "0x745936b6ec8e9037c042623029cd473b7ae01144",
     "strategyRouter": "0xa75a715818aef85c3a5850cdf70c82c30c2487cd",
-    "vaultManager": "0x1694d4451cf9463f998773c343d42342445f43ec",
-    "feeCollector": "0x9fde5b14a0e164edb333843bf30b9f12da0f0841"
+    "vaultManager": "0xd3dba0060a5fdade7db4fd2613cbe25a388d94e1",
+    "feeCollector": "0xf860d533b2228ca8207c5af3912f90f34cd10c22",
+    "swapRouter": "0x5969f3cfc1ffdfa22c779807aaf32033603f8be7"
+  },
+  "notes": {
+    "stablecoins": "USDC (native), USDT (existing), DAI (existing testnet), MockDAI (newly deployed)",
+    "swappingFlow": "USDT/DAI → USDC via SimpleSwapRouter → VaultManager → StrategyRouter → Aave/Compound",
+    "updatedAt": "2026-04-12T00:00:00Z"
   }
 }

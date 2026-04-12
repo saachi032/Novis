@@ -66,7 +66,7 @@ export function CandleChart({
 
   useEffect(() => {
     let cancelled = false;
-    let pollInterval: ReturnType<typeof setInterval> | undefined;
+    let ws: WebSocket | undefined;
     let resizeObserver: ResizeObserver | undefined;
     let currentData: CandleDatum[] = [];
 
@@ -184,38 +184,48 @@ export function CandleChart({
         ro.observe(chartContainerRef.current);
         resizeObserver = ro;
 
-        pollInterval = setInterval(async () => {
-          try {
-            const pollRes = await fetch(
-              `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=1`
-            );
-            if (!pollRes.ok) return;
-            const pollData = await pollRes.json();
-            if (pollData.length > 0 && seriesRef.current) {
-              const latest = pollData[0];
-              const candle: CandleDatum = {
-                time: (latest[0] / 1000) as Time,
-                open: parseFloat(latest[1]),
-                high: parseFloat(latest[2]),
-                low: parseFloat(latest[3]),
-                close: parseFloat(latest[4]),
-              };
-              seriesRef.current.update(candle);
+        const wsUrl = `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${interval}`;
+        ws = new WebSocket(wsUrl);
 
-              if (currentData.length > 0) {
-                const lastCandle = currentData[currentData.length - 1];
-                if (lastCandle.time === candle.time) {
-                  currentData[currentData.length - 1] = candle;
-                } else {
-                  currentData.push(candle);
-                }
-                updateDots(currentData);
+        ws.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data);
+            const kline = message.k;
+            if (!kline || !seriesRef.current) return;
+
+            const candle: CandleDatum = {
+              time: (kline.t / 1000) as Time,
+              open: parseFloat(kline.o),
+              high: parseFloat(kline.h),
+              low: parseFloat(kline.l),
+              close: parseFloat(kline.c),
+            };
+
+            seriesRef.current.update(candle);
+
+            if (currentData.length > 0) {
+              const lastCandle = currentData[currentData.length - 1];
+              if (lastCandle.time === candle.time) {
+                currentData[currentData.length - 1] = candle;
+              } else {
+                currentData.push(candle);
               }
+              updateDots(currentData);
             }
           } catch (e) {
-            console.error("Polling error", e);
+            console.error("WebSocket message parsing error", e);
           }
-        }, 30000);
+        };
+
+        ws.onclose = () => {
+          if (!cancelled) {
+            console.log("WebSocket closed");
+          }
+        };
+
+        ws.onerror = (e) => {
+          console.error("WebSocket error", e);
+        };
 
         setIsLoading(false);
       } catch (err: unknown) {
@@ -233,7 +243,9 @@ export function CandleChart({
 
     return () => {
       cancelled = true;
-      if (pollInterval) clearInterval(pollInterval);
+      if (ws) {
+        ws.close();
+      }
       resizeObserver?.disconnect();
       if (chartRef.current) {
         chartRef.current.remove();

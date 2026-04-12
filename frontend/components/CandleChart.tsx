@@ -68,6 +68,29 @@ export function CandleChart({
     let cancelled = false;
     let pollInterval: ReturnType<typeof setInterval> | undefined;
     let resizeObserver: ResizeObserver | undefined;
+    let currentData: CandleDatum[] = [];
+
+    const updateDots = (data: CandleDatum[]) => {
+      const sampledDots = data
+        .slice(-12)
+        .map((entry, index, arr) => {
+          const localMin = Math.min(...arr.map((item) => item.low));
+          const localMax = Math.max(...arr.map((item) => item.high));
+          const span = Math.max(localMax - localMin, 0.0001);
+          const normalized = (entry.close - localMin) / span;
+          const openNormalized = (entry.open - localMin) / span;
+          const maxNormalized = Math.max(normalized, openNormalized);
+          return {
+            level: Math.max(4, Math.round(maxNormalized * 8) + 2),
+            tone: entry.close >= entry.open ? "up" : "down",
+            ratio: normalized,
+            label: `${index + 1}`,
+            openLevel: Math.max(1, Math.round(openNormalized * 8) + 1),
+            closeLevel: Math.max(1, Math.round(normalized * 8) + 1),
+          } satisfies DotColumn;
+        });
+      setDotColumns(sampledDots);
+    };
 
     const run = async () => {
       if (chartRef.current) {
@@ -94,25 +117,8 @@ export function CandleChart({
           close: parseFloat(String(d[4])),
         }));
 
-        const sampledDots = formattedData
-          .slice(-12)
-          .map((entry, index, arr) => {
-            const localMin = Math.min(...arr.map((item) => item.low));
-            const localMax = Math.max(...arr.map((item) => item.high));
-            const span = Math.max(localMax - localMin, 0.0001);
-            const normalized = (entry.close - localMin) / span;
-            const openNormalized = (entry.open - localMin) / span;
-            const maxNormalized = Math.max(normalized, openNormalized);
-            return {
-              level: Math.max(4, Math.round(maxNormalized * 8) + 2),
-              tone: entry.close >= entry.open ? "up" : "down",
-              ratio: normalized,
-              label: `${index + 1}`,
-              openLevel: Math.max(1, Math.round(openNormalized * 8) + 1),
-              closeLevel: Math.max(1, Math.round(normalized * 8) + 1),
-            } satisfies DotColumn;
-          });
-        setDotColumns(sampledDots);
+        currentData = formattedData;
+        updateDots(currentData);
 
         if (cancelled || !chartContainerRef.current) return;
 
@@ -187,13 +193,24 @@ export function CandleChart({
             const pollData = await pollRes.json();
             if (pollData.length > 0 && seriesRef.current) {
               const latest = pollData[0];
-              seriesRef.current.update({
+              const candle: CandleDatum = {
                 time: (latest[0] / 1000) as Time,
                 open: parseFloat(latest[1]),
                 high: parseFloat(latest[2]),
                 low: parseFloat(latest[3]),
                 close: parseFloat(latest[4]),
-              });
+              };
+              seriesRef.current.update(candle);
+
+              if (currentData.length > 0) {
+                const lastCandle = currentData[currentData.length - 1];
+                if (lastCandle.time === candle.time) {
+                  currentData[currentData.length - 1] = candle;
+                } else {
+                  currentData.push(candle);
+                }
+                updateDots(currentData);
+              }
             }
           } catch (e) {
             console.error("Polling error", e);
@@ -261,9 +278,8 @@ export function CandleChart({
             key={asset.value}
             type="button"
             onClick={() => setSymbol(asset.value)}
-            className={`rounded-lg px-3 py-1 text-xs font-bold transition-colors ${
-              symbol === asset.value ? btnActive : btnIdle
-            }`}
+            className={`rounded-lg px-3 py-1 text-xs font-bold transition-colors ${symbol === asset.value ? btnActive : btnIdle
+              }`}
           >
             {asset.label}
           </button>

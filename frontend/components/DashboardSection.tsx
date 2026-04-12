@@ -24,7 +24,7 @@ export function DashboardSection() {
       id="dashboard"
       className="relative px-4 py-16 sm:px-6 sm:py-24"
     >
-      <div className="pointer-events-none absolute inset-x-0 top-0 mx-auto h-40 max-w-4xl rounded-b-[40%] bg-white/60" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 mx-auto h-40 max-w-4xl rounded-b-[40%] bg-white/60 dark:bg-neutral-900/60" />
 
       <div className="relative mx-auto max-w-6xl">
         <p className="text-center text-xs font-semibold uppercase tracking-[0.2em] text-brand-green">

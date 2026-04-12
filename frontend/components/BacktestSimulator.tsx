@@ -236,7 +236,7 @@ export function BacktestSimulator({ initialCapital = 1000 }: { initialCapital?: 
       </div>
 
       {sim && !loading && payload && (
-        <div className="mt-4 grid gap-2 rounded-2xl border border-emerald-100 bg-emerald-50/60 px-4 py-3 text-xs text-neutral-800 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-4 grid gap-2 rounded-2xl border border-emerald-100 dark:border-neutral-700 bg-emerald-50/60 dark:bg-neutral-800/60 px-4 py-3 text-xs text-neutral-800 dark:text-neutral-100 sm:grid-cols-2 lg:grid-cols-4">
           <p>
             <span className="font-semibold text-neutral-600">Risk:</span> {sim.riskLevel}
           </p>
@@ -286,7 +286,7 @@ export function BacktestSimulator({ initialCapital = 1000 }: { initialCapital?: 
                       tickFormatter={(v) => `${Number(v).toFixed(1)}%`}
                     />
                     <Tooltip
-                      formatter={(v: number | undefined) => [`${Number(v ?? 0).toFixed(3)}%`, ""]}
+                      formatter={(v) => [`${Number(v ?? 0).toFixed(3)}%`, ""]}
                       labelFormatter={(l) => l}
                       contentStyle={{ borderRadius: 12, border: "1px solid #e5e7eb" }}
                     />

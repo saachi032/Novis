@@ -101,26 +101,26 @@ export function WalletAccountDropdown({ open, onClose }: Props) {
     <div
       role="menu"
       aria-label="Wallet menu"
-      className="absolute right-0 top-[calc(100%+10px)] z-[100] w-[min(calc(100vw-2rem),288px)] rounded-2xl border border-brand-gray/80 bg-white p-3 shadow-card"
+      className="absolute right-0 top-[calc(100%+10px)] z-[100] w-[min(calc(100vw-2rem),288px)] rounded-2xl border border-brand-gray/80 bg-white p-3 shadow-card dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-100 dark:shadow-[0_8px_40px_rgba(0,0,0,0.45)]"
     >
       {editingName ? (
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-2">
             <p
               id={`${labelId}-edit`}
-              className="text-sm font-bold text-brand-black"
+              className="text-sm font-bold text-brand-black dark:text-neutral-100"
             >
               {displayName ? "Edit name" : "Add name"}
             </p>
             <button
               type="button"
               onClick={cancelEditName}
-              className="text-xs font-semibold text-neutral-500 hover:text-brand-black"
+              className="text-xs font-semibold text-neutral-500 hover:text-brand-black dark:text-neutral-400 dark:hover:text-neutral-100"
             >
               Back
             </button>
           </div>
-          <p className="text-[11px] leading-snug text-neutral-500">
+          <p className="text-[11px] leading-snug text-neutral-500 dark:text-neutral-400">
             Shown in the header. Stored on this device only.
           </p>
           <label htmlFor={`${labelId}-name`} className="sr-only">
@@ -137,16 +137,16 @@ export function WalletAccountDropdown({ open, onClose }: Props) {
               setNameInput(e.target.value);
               setNameError(null);
             }}
-            className="w-full rounded-xl border border-brand-gray px-3 py-2 text-sm text-brand-black outline-none ring-brand-green/25 placeholder:text-neutral-400 focus:ring-2"
+            className="w-full rounded-xl border border-brand-gray bg-white px-3 py-2 text-sm text-brand-black outline-none ring-brand-green/25 placeholder:text-neutral-400 focus:ring-2 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-500"
           />
           {nameError ? (
-            <p className="text-xs font-medium text-red-700">{nameError}</p>
+            <p className="text-xs font-medium text-red-700 dark:text-red-400">{nameError}</p>
           ) : null}
           <div className="flex justify-end gap-2">
             <button
               type="button"
               onClick={cancelEditName}
-              className="rounded-full border border-brand-gray px-3 py-1.5 text-xs font-semibold text-brand-black hover:bg-brand-bg"
+              className="rounded-full border border-brand-gray px-3 py-1.5 text-xs font-semibold text-brand-black hover:bg-brand-bg dark:border-neutral-600 dark:text-neutral-100 dark:hover:bg-neutral-800"
             >
               Cancel
             </button>
@@ -161,7 +161,7 @@ export function WalletAccountDropdown({ open, onClose }: Props) {
         </div>
       ) : (
         <>
-          <div className="flex gap-3 border-b border-brand-gray/50 pb-3">
+          <div className="flex gap-3 border-b border-brand-gray/50 pb-3 dark:border-neutral-600/60">
             <div
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#e8a598] text-xs font-bold text-white"
               aria-hidden
@@ -171,14 +171,14 @@ export function WalletAccountDropdown({ open, onClose }: Props) {
             <div className="min-w-0 flex-1">
               <p
                 id="wallet-dd-title"
-                className="truncate text-sm font-bold text-brand-black"
+                className="truncate text-sm font-bold text-brand-black dark:text-neutral-100"
               >
                 {displayLabel}
               </p>
-              <p className="truncate font-mono text-[11px] text-neutral-500">
+              <p className="truncate font-mono text-[11px] text-neutral-500 dark:text-neutral-400">
                 {short}
               </p>
-              <p className="mt-0.5 text-xs text-neutral-600">
+              <p className="mt-0.5 text-xs text-neutral-600 dark:text-neutral-300">
                 {bal
                   ? `${Number(bal.formatted).toLocaleString(undefined, {
                       maximumFractionDigits: 6,
@@ -192,7 +192,7 @@ export function WalletAccountDropdown({ open, onClose }: Props) {
             type="button"
             role="menuitem"
             onClick={startEditName}
-            className="mt-2 w-full rounded-xl py-2 text-left text-xs font-semibold text-brand-green hover:bg-brand-bg"
+            className="mt-2 w-full rounded-xl py-2 text-left text-xs font-semibold text-brand-green hover:bg-brand-bg dark:hover:bg-neutral-800"
           >
             {displayName ? "Edit name" : "Add name"}
           </button>
@@ -202,7 +202,7 @@ export function WalletAccountDropdown({ open, onClose }: Props) {
               type="button"
               role="menuitem"
               onClick={copy}
-              className="flex items-center justify-center gap-1.5 rounded-xl border border-brand-gray py-2 text-[11px] font-semibold text-brand-black hover:bg-brand-bg"
+              className="flex items-center justify-center gap-1.5 rounded-xl border border-brand-gray py-2 text-[11px] font-semibold text-brand-black hover:bg-brand-bg dark:border-neutral-600 dark:text-neutral-100 dark:hover:bg-neutral-800"
             >
               <svg
                 width="14"
@@ -222,7 +222,7 @@ export function WalletAccountDropdown({ open, onClose }: Props) {
               type="button"
               role="menuitem"
               onClick={handleDisconnect}
-              className="flex items-center justify-center gap-1.5 rounded-xl border border-brand-gray py-2 text-[11px] font-semibold text-brand-black hover:bg-brand-bg"
+              className="flex items-center justify-center gap-1.5 rounded-xl border border-brand-gray py-2 text-[11px] font-semibold text-brand-black hover:bg-brand-bg dark:border-neutral-600 dark:text-neutral-100 dark:hover:bg-neutral-800"
             >
               <svg
                 width="14"

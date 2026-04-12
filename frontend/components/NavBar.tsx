@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ConnectWalletControl } from "@/components/wallet/ConnectWalletControl";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const links = [
   { href: "/features", label: "Features" },
@@ -55,22 +56,23 @@ export function NavBar() {
 
         {/* Right Side */}
         <div className="flex items-center gap-2 sm:gap-3">
-          
+          <ThemeToggle />
+
           {/* Mobile Menu */}
           <details className="relative lg:hidden">
             <summary className="flex h-10 cursor-pointer list-none items-center justify-center rounded-full border border-white/20 bg-white/10 px-3 text-xs font-medium text-white transition duration-300 hover:scale-105 hover:bg-white/20">
               Menu
             </summary>
 
-            <div className="absolute right-0 z-20 mt-2 min-w-[11rem] rounded-2xl border border-neutral-200 bg-white p-2 shadow-soft">
+            <div className="absolute right-0 z-20 mt-2 min-w-[11rem] rounded-2xl border border-neutral-200 bg-white p-2 shadow-soft dark:border-neutral-600 dark:bg-neutral-900 dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
               {links.map((l) => (
                 <Link
                   key={`${l.href}-m`}
                   href={l.href}
-                  className={`block rounded-xl px-3 py-2.5 text-[15px] font-semibold transition duration-300 hover:bg-neutral-100 ${
+                  className={`block rounded-xl px-3 py-2.5 text-[15px] font-semibold transition duration-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
                     isActive(l.href)
-                      ? "font-semibold text-black"
-                      : "text-neutral-700"
+                      ? "font-semibold text-black dark:text-white"
+                      : "text-neutral-700 dark:text-neutral-200"
                   }`}
                 >
                   {l.label}

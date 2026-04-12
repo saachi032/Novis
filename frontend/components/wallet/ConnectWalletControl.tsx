@@ -31,7 +31,7 @@ export function ConnectWalletControl({
   }, [menuOpen]);
 
   const defaultDisconnected =
-    "rounded-full border border-brand-gray bg-white px-5 py-2.5 text-sm font-semibold text-brand-black shadow-soft transition duration-300 hover:scale-105 hover:bg-brand-bg";
+    "rounded-full border border-brand-gray bg-white px-5 py-2.5 text-sm font-semibold text-brand-black shadow-soft transition duration-300 hover:scale-105 hover:bg-brand-bg dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700";
 
   return (
     <ConnectButton.Custom>
@@ -70,7 +70,7 @@ export function ConnectWalletControl({
                 <button
                   type="button"
                   onClick={openChainModal}
-                  className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-brand-gray bg-white shadow-soft transition duration-300 hover:scale-105"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-brand-gray bg-white shadow-soft transition duration-300 hover:scale-105 dark:border-neutral-600 dark:bg-neutral-800"
                   aria-label={`Switch network: ${chain.name ?? "chain"}`}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -82,7 +82,7 @@ export function ConnectWalletControl({
                 aria-expanded={menuOpen}
                 aria-haspopup="menu"
                 onClick={() => setMenuOpen((o) => !o)}
-                className={`flex items-center gap-2 rounded-full border border-brand-gray bg-white py-2 pl-4 pr-3 text-sm font-bold text-brand-black shadow-soft transition duration-300 hover:bg-brand-bg ${menuOpen ? "ring-2 ring-brand-green/25" : ""}`}
+                className={`flex items-center gap-2 rounded-full border border-brand-gray bg-white py-2 pl-4 pr-3 text-sm font-bold text-brand-black shadow-soft transition duration-300 hover:bg-brand-bg dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700 ${menuOpen ? "ring-2 ring-brand-green/25 dark:ring-brand-green/40" : ""}`}
               >
                 <span className="max-w-[10rem] truncate sm:max-w-[14rem]">
                   {displayLabel}

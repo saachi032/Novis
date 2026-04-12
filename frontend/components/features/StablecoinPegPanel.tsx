@@ -34,8 +34,8 @@ export function StablecoinPegPanel() {
             Stablecoin reference vs USD
           </h3>
           <p className="mt-1 text-xs text-neutral-500">
-            Implied $1.00 peg deviation (basis points, demo). Vault routes USDC
-            on Base.
+            Implied $1.00 peg deviation (basis points, demo). Compare how each
+            stable tracks the dollar; vault strategy earns on USDC after any zap.
           </p>
         </div>
         <span className="inline-flex items-center gap-1.5 rounded-full border border-brand-gray bg-brand-bg px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-neutral-600">

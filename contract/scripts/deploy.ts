@@ -61,12 +61,21 @@ async function main() {
   ]);
   console.log(`StrategyRouter: ${strategyRouter.address}`);
 
+  const swapRouterAddress = getAddress(
+    optionalAddress("SWAP_ROUTER_ADDRESS", "0x0000000000000000000000000000000000000000")
+  );
+  const usdtAddress = getAddress(optionalAddress("USDT_ADDRESS", "0x0000000000000000000000000000000000000000"));
+  const daiAddress = getAddress(optionalAddress("DAI_ADDRESS", "0x0000000000000000000000000000000000000000"));
+
   const vaultManager = await viem.deployContract("VaultManager", [
     usdcAddress,
     vaultName,
     vaultSymbol,
     riskRegistry.address,
-    initialOwner
+    initialOwner,
+    swapRouterAddress,
+    usdtAddress,
+    daiAddress
   ]);
   console.log(`VaultManager: ${vaultManager.address}`);
 
@@ -97,7 +106,10 @@ async function main() {
       riskRegistry: riskRegistry.address,
       strategyRouter: strategyRouter.address,
       vaultManager: vaultManager.address,
-      feeCollector: feeCollector.address
+      feeCollector: feeCollector.address,
+      swapRouter: swapRouterAddress,
+      usdt: usdtAddress,
+      dai: daiAddress
     }
   };
 

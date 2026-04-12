@@ -23,9 +23,10 @@ export function HeroSection() {
           <div className="relative grid gap-10 lg:grid-cols-12 lg:items-end lg:gap-12">
             <div className="order-2 max-w-md lg:order-1 lg:col-span-4">
               <p className="text-pretty text-sm leading-relaxed text-neutral-600 sm:text-base">
-                Novis is an on-chain robo-advisor for USDC on Base: it routes
-                liquidity across Aave v3 and Compound v3, rebalancing only when
-                the spread clears gas — non-custodial and ERC-4626 aligned.
+                Novis is an on-chain robo-advisor for dollar stables on Base:
+                deposit USDC, USDT, or DAI (zapped to USDC when enabled), then we
+                route liquidity across Aave v3 and Compound v3 — non-custodial and
+                ERC-4626 aligned.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
                 <ConnectButton.Custom>
@@ -59,7 +60,7 @@ export function HeroSection() {
           </div>
 
           <div className="relative mt-12 flex flex-wrap gap-3 border-t border-brand-gray/50 pt-8">
-            {["Base", "USDC", "Aave v3", "Compound v3"].map((name) => (
+            {["Base", "USDC", "USDT", "DAI", "Aave v3", "Compound v3"].map((name) => (
               <span
                 key={name}
                 className="rounded-full border border-brand-gray bg-brand-bg px-4 py-1.5 text-xs font-medium text-neutral-700"

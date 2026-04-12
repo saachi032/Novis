@@ -10,6 +10,18 @@ export const BASE_SEPOLIA_ADDRESSES = {
   compoundComet: '0xc3d688b66703497DAa19211E0b686300185341f5' as const,
 } as const;
 
+/** Replace `vaultManager` after Base mainnet deployment. */
+export const BASE_MAINNET_ADDRESSES = {
+  vaultManager: "0x0000000000000000000000000000000000000000" as const,
+  usdc: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as const,
+} as const;
+
+export function getVaultManagerAddress(chainId: number): `0x${string}` | null {
+  if (chainId === 84532) return BASE_SEPOLIA_ADDRESSES.vaultManager;
+  if (chainId === 8453) return BASE_MAINNET_ADDRESSES.vaultManager;
+  return null;
+}
+
 export const CHAIN_ID = 84532; // Base Sepolia chain ID
 export const RPC_URL = 'https://sepolia.base.org';
 

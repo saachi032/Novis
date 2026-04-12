@@ -1,13 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useAccount } from "wagmi";
+import { useState, useEffect, useMemo } from "react";
+import { useAccount, useChainId } from "wagmi";
 import { useUserVaultShares, useVaultAPYs } from "@/lib/hooks/useVaultData";
 import { useDeposit } from "@/lib/hooks/useDepositWithdraw";
 import { useStrategyWithRetry } from "@/lib/hooks/useStrategyWithRetry";
 import type { RiskLevel, DurationKey } from "@/lib/hooks/useInvestmentStrategy";
 import { useHydrated } from "@/lib/hooks/useHydrated";
 import { useTransactionHistory } from "@/lib/hooks/useTransactionHistory";
+import {
+  getStablecoinOptions,
+  type StablecoinId,
+} from "@/lib/constants/stablecoins";
+import { useStablecoinPreference } from "@/lib/context/StablecoinContext";
 
 const riskLevels = [
   { id: "conservative" as const, label: "Conservative", hint: "40% allocation" },
@@ -25,20 +30,41 @@ const durations = [
 
 export function DepositPanel() {
   const hydrated = useHydrated();
+  const chainId = useChainId();
   const { address, isConnected } = useAccount();
   const { shares } = useUserVaultShares(address);
   const { blendedAPY } = useVaultAPYs();
-  const { depositIntoVault, isLoading: depositLoading, hash, step } = useDeposit();
+  const {
+    depositIntoVault,
+    isLoading: depositLoading,
+    hash,
+    step,
+    zapperStatus,
+  } = useDeposit();
   const { setInvestmentStrategy } = useStrategyWithRetry();
   const { addTransaction, updateLatestTransactionHashAndStatus } = useTransactionHistory();
 
   const [depositAmount, setDepositAmount] = useState("");
+  const { selectedAsset, setSelectedAsset } = useStablecoinPreference();
   const [risk, setRisk] = useState<RiskLevel>("balanced");
   const [duration, setDuration] = useState<DurationKey>("weekly");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [currentInvestmentId, setCurrentInvestmentId] = useState<string | null>(null);
   const [depositHash, setDepositHash] = useState<string | null>(null);
+
+  const allOptions = getStablecoinOptions(chainId);
+  const assetOptions = useMemo(() => {
+    if (!allOptions) return [];
+    if (zapperStatus === "on") return allOptions;
+    return allOptions.filter((o) => o.id === "USDC");
+  }, [allOptions, zapperStatus]);
+
+  useEffect(() => {
+    if (zapperStatus !== "on" && selectedAsset !== "USDC") {
+      setSelectedAsset("USDC");
+    }
+  }, [zapperStatus, selectedAsset]);
 
   // Track transaction status changes when hash arrives
   useEffect(() => {
@@ -69,13 +95,18 @@ export function DepositPanel() {
       }
 
       if (parseFloat(depositAmount) > 10000) {
-        setError("Maximum deposit is 10,000 USDC for demo");
+        setError("Maximum deposit is 10,000 (denominated asset) for demo");
         return;
       }
 
-      // STEP 1: Deposit USDC to vault (REQUIRED - must succeed)
+      if (!getStablecoinOptions(chainId)) {
+        setError("Switch your wallet to Base Sepolia or Base mainnet.");
+        return;
+      }
+
+      // STEP 1: Deposit to vault (USDC or zapper)
       console.log("Starting deposit...");
-      const actualTxHash = await depositIntoVault(depositAmount);
+      const actualTxHash = await depositIntoVault(depositAmount, selectedAsset);
       
       // Record the transaction in history with the actual hash
       const invId = addTransaction(depositAmount, risk, duration, actualTxHash, "deposit");
@@ -84,7 +115,7 @@ export function DepositPanel() {
 
       // Deposit succeeded!
       setSuccess(
-        `Deposit of ${depositAmount} USDC completed! Funds in vault.`
+        `Deposit of ${depositAmount} ${selectedAsset} completed! Funds in vault.`
       );
       setDepositAmount("");
 
@@ -116,14 +147,16 @@ export function DepositPanel() {
 
       if (errorMsg.includes("allowance")) {
         setError(
-          "Approval failed. Make sure you have enough USDC and try again."
+          "Approval failed. Make sure you have enough of the selected token and try again."
         );
       } else if (errorMsg.includes("gas")) {
         setError(
           "Transaction exceeded gas limit. Try depositing a smaller amount (under $100)."
         );
       } else if (errorMsg.includes("insufficient")) {
-        setError("Insufficient USDC balance. Check your wallet on Base Sepolia.");
+        setError(
+          `Insufficient ${selectedAsset} balance. Check your wallet on Base Sepolia.`
+        );
       } else if (errorMsg.includes("user rejected")) {
         setError("Transaction rejected by user");
       } else if (errorMsg.includes("StrategyNotConfigured")) {
@@ -147,7 +180,7 @@ export function DepositPanel() {
       {hydrated && !isConnected && (
         <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-4">
           <p className="text-sm font-semibold text-amber-900">
-            Connect your wallet on Base Sepolia to deposit USDC
+            Connect your wallet on Base Sepolia to deposit
           </p>
         </div>
       )}
@@ -166,16 +199,58 @@ export function DepositPanel() {
         </div>
       )}
       
-      <h3 className="font-display text-lg font-bold text-brand-black">Deposit USDC</h3>
+      <h3 className="font-display text-lg font-bold text-brand-black">
+        Deposit stablecoins
+      </h3>
       <p className="mt-1 text-xs text-neutral-500">
         Earn {blendedAPY}% APY through Aave & Compound
       </p>
 
+      {zapperStatus === "off" && (
+        <p className="mt-2 text-xs text-neutral-500">
+          USDT and DAI require the on-chain zapper (swap router). This deployment
+          accepts USDC only.
+        </p>
+      )}
+
+      {!allOptions && (
+        <p className="mt-4 text-sm text-amber-800">
+          Connect to Base Sepolia or Base mainnet to use this vault.
+        </p>
+      )}
+
       <div className="mt-6 space-y-4">
+        {/* Asset */}
+        <div>
+          <label className="block text-xs font-semibold text-neutral-600">
+            Asset
+          </label>
+          <select
+            value={selectedAsset}
+            onChange={(e) =>
+              setSelectedAsset(e.target.value as StablecoinId)
+            }
+            disabled={
+              !allOptions ||
+              assetOptions.length === 0 ||
+              depositLoading ||
+              zapperStatus === "loading" ||
+              (hydrated && !isConnected)
+            }
+            className="mt-2 w-full rounded-lg border border-brand-gray/60 bg-white px-4 py-3 text-sm font-semibold text-brand-black focus:border-brand-green focus:outline-none focus:ring-1 focus:ring-brand-green disabled:bg-neutral-100"
+          >
+            {assetOptions.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
         {/* Amount Input */}
         <div>
           <label className="block text-xs font-semibold text-neutral-600">
-            Deposit Amount (USDC)
+            Deposit amount ({selectedAsset})
           </label>
           <div className="mt-2 flex items-center gap-2">
             <input
@@ -194,6 +269,13 @@ export function DepositPanel() {
               Max
             </button>
           </div>
+          {depositLoading && (
+            <p className="mt-2 text-xs text-neutral-500" aria-live="polite">
+              {step === "approving" && "Step 1/2: confirm token approval in your wallet…"}
+              {step === "depositing" && "Step 2/2: confirming USDC deposit…"}
+              {step === "zapping" && "Step 2/2: swap to USDC and deposit (one transaction)…"}
+            </p>
+          )}
         </div>
 
         {/* Risk & Duration Selection */}
@@ -258,10 +340,24 @@ export function DepositPanel() {
             {/* Confirm Button */}
             <button
               onClick={handleDeposit}
-              disabled={depositLoading || !depositAmount || Number(depositAmount) <= 0 || (hydrated && !isConnected)}
+              disabled={
+                !allOptions ||
+                depositLoading ||
+                !depositAmount ||
+                Number(depositAmount) <= 0 ||
+                (hydrated && !isConnected)
+              }
               className="w-full rounded-lg bg-brand-green py-3 px-4 font-semibold text-brand-black transition-all hover:bg-brand-green/90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {depositLoading ? "Processing..." : "Confirm Deposit & Set Strategy"}
+              {depositLoading
+                ? step === "approving"
+                  ? "Approve in wallet…"
+                  : step === "depositing"
+                    ? "Depositing…"
+                    : step === "zapping"
+                      ? "Swap & deposit…"
+                      : "Processing…"
+                : "Confirm Deposit & Set Strategy"}
             </button>
           </div>
         )}

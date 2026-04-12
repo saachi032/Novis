@@ -58,12 +58,20 @@ export function DashboardSection() {
               <StatCard
                 label="Blended vault APY"
                 value={`${blendedAPY}%`}
-                sub={apyLoading ? "Loading..." : "Weighted by protocol allocation"}
+                sub={
+                  apyLoading
+                    ? "Loading..."
+                    : "Same headline yield for USD value after USDC/USDT/DAI entry"
+                }
               />
               <StatCard
                 label="Your position"
                 value={positionValue && positionValue !== "0" ? `$${Number(positionValue).toLocaleString(undefined, { maximumFractionDigits: 2 })}` : "—"}
-                sub={positionLoading ? "Loading..." : "Deposit USDC to mint vault shares (ERC-4626)"}
+                sub={
+                  positionLoading
+                    ? "Loading..."
+                    : "Vault shares (ERC-4626); underlying is USDC"
+                }
               />
               <ProtocolBreakdown />
             </div>

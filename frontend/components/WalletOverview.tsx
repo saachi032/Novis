@@ -1,43 +1,30 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useAccount, useBalance } from "wagmi";
-import { useUserVaultShares, useTotalAssets } from "@/lib/hooks/useVaultData";
-import { BASE_SEPOLIA_ADDRESSES } from "@/lib/contracts";
 import { useHydrated } from "@/lib/hooks/useHydrated";
-
-// Use Base Sepolia testnet USDC address
-const USDC_ADDRESS = BASE_SEPOLIA_ADDRESSES.usdc;
+import { useStablecoinBalances } from "@/lib/hooks/useStablecoinBalances";
 
 function shorten(addr: string) {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
 
+function fmtUsd(n: number) {
+  return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+}
+
 export function WalletOverview() {
   const hydrated = useHydrated();
   const { address, isConnected } = useAccount();
-  
-  // USDC Balance
-  const { data: usdcBal, isLoading: usdcLoading } = useBalance({
-    address: address as `0x${string}` | undefined,
-    token: USDC_ADDRESS as `0x${string}`,
-    query: { 
-      enabled: !!address && hydrated,
-      refetchInterval: 10000,
-    },
-  });
-  
-  // Native ETH Balance
+  const { balances, options, isLoading, totalApproxUsd } =
+    useStablecoinBalances();
+
   const { data: ethBal, isLoading: ethLoading } = useBalance({
     address: address as `0x${string}` | undefined,
-    query: { 
+    query: {
       enabled: !!address && hydrated,
-      refetchInterval: 10000,
+      refetchInterval: 10_000,
     },
   });
-  
-  const { shares } = useUserVaultShares(address);
-  const { totalAssets } = useTotalAssets();
 
   return (
     <div className="space-y-3">
@@ -49,57 +36,67 @@ export function WalletOverview() {
         </div>
       ) : (
         <>
-          {/* Balances Section */}
-          <div className="grid grid-cols-2 gap-3">
-            {/* USDC Balance Card */}
-            <div className="surface-card rounded-2xl p-4">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 mb-2">
-                USDC
-              </h3>
-              <p className="font-display text-2xl font-bold text-brand-black leading-tight">
-                {!hydrated ? (
-                  <span className="text-neutral-400 text-sm">—</span>
-                ) : usdcLoading ? (
-                  <span className="text-neutral-400 text-sm">Loading</span>
-                ) : usdcBal && usdcBal.formatted ? (
-                  `$${Number(usdcBal.formatted).toLocaleString(undefined, {
-                    maximumFractionDigits: 1,
-                  })}`
-                ) : (
-                  "0"
-                )}
-              </p>
+          <div className="surface-card rounded-2xl p-4">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+              Stablecoins in wallet
+            </h3>
+            <p className="mt-1 font-mono text-lg font-bold text-brand-black">
+              ≈ ${fmtUsd(totalApproxUsd)}
+              <span className="ml-1 text-xs font-normal text-neutral-500">
+                (USDC+USDT+DAI)
+              </span>
+            </p>
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              {options.map((o) => {
+                const b = balances[o.id];
+                const loading = isLoading && !b;
+                return (
+                  <div
+                    key={o.id}
+                    className="rounded-lg border border-brand-gray/40 bg-brand-bg/60 px-2 py-2"
+                  >
+                    <p className="text-[10px] font-semibold uppercase text-neutral-500">
+                      {o.label}
+                    </p>
+                    <p className="mt-0.5 font-mono text-sm font-semibold text-brand-black tabular-nums">
+                      {loading
+                        ? "…"
+                        : fmtUsd(b ? Number(b.formatted) : 0)}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
+          </div>
 
-            {/* ETH Balance Card */}
+          <div className="grid grid-cols-2 gap-3">
             <div className="surface-card rounded-2xl p-4">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 mb-2">
-                ETH
+                ETH (gas)
               </h3>
               <p className="font-display text-2xl font-bold text-brand-black leading-tight">
                 {!hydrated ? (
                   <span className="text-neutral-400 text-sm">—</span>
                 ) : ethLoading ? (
                   <span className="text-neutral-400 text-sm">Loading</span>
-                ) : ethBal && ethBal.formatted ? (
+                ) : ethBal?.formatted ? (
                   `${Number(ethBal.formatted).toLocaleString(undefined, {
-                    maximumFractionDigits: 3,
+                    maximumFractionDigits: 4,
                   })}`
                 ) : (
                   "0"
                 )}
               </p>
             </div>
-          </div>
 
-          {/* Wallet Address Card */}
-          <div className="surface-card rounded-2xl p-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 mb-2">
-              Wallet
-            </h3>
-            <p className="font-mono text-xs text-brand-black break-all font-medium">
-              {shorten(address)}
-            </p>
+            <div className="surface-card rounded-2xl p-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 mb-2">
+                Wallet
+              </h3>
+              <p className="font-mono text-xs text-brand-black break-all font-medium">
+                {shorten(address)}
+              </p>
+            </div>
           </div>
         </>
       )}

@@ -15,7 +15,7 @@ export function StrategySection({ embedded = false }: { embedded?: boolean }) {
         <h2
           className={`text-center font-display text-3xl font-extrabold tracking-tight text-brand-black sm:text-4xl md:text-5xl ${embedded ? "" : "mt-4"}`}
         >
-          How novis routes your USDC
+          How novis routes your stables
         </h2>
         <p className="mx-auto mt-6 max-w-2xl text-pretty text-center text-sm leading-relaxed text-neutral-600 sm:text-base">
           Deposits flow into an ERC-4626 vault on Base. A strategy router reads

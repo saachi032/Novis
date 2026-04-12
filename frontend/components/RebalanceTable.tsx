@@ -12,9 +12,15 @@ export function RebalanceTable() {
   const hydrated = useHydrated();
   const { address, isConnected } = useAccount();
   const { forceRebalance, isLoading, error, success, txHash } = useForceRebalance();
-  const { aaveBalance, compoundBalance, aavePercentage, compoundPercentage, total } = useUserPositionBreakdown(
-    hydrated ? address : undefined
-  );
+  const {
+    aaveBalance,
+    compoundBalance,
+    morphoBalance,
+    aavePercentage,
+    compoundPercentage,
+    morphoPercentage,
+    total,
+  } = useUserPositionBreakdown(hydrated ? address : undefined);
   const { history, addRebalanceEntry } = useRebalanceHistory();
   const { riskLevel } = useUserStrategy(hydrated ? address : undefined);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -28,41 +34,70 @@ export function RebalanceTable() {
       // Determine which direction to rebalance based on current position
       const aaveNum = parseFloat(aaveBalance || "0");
       const compoundNum = parseFloat(compoundBalance || "0");
+      const morphoNum = parseFloat(morphoBalance || "0");
       const totalNum = parseFloat(total || "0");
       const aavePercent = parseFloat(String(aavePercentage || 0));
       const compoundPercent = parseFloat(String(compoundPercentage || 0));
-      
-      console.log("Position breakdown:", { aaveNum, compoundNum, totalNum, aavePercent, compoundPercent, riskLevel });
-      
+      const morphoPercent = parseFloat(String(morphoPercentage || 0));
+
+      console.log("Position breakdown:", {
+        aaveNum,
+        compoundNum,
+        morphoNum,
+        totalNum,
+        aavePercent,
+        compoundPercent,
+        morphoPercent,
+        riskLevel,
+      });
+
       if (totalNum > 0) {
-        let from: "Aave v3" | "Compound v3";
-        let to: "Aave v3" | "Compound v3";
+        type P = "Aave v3" | "Compound v3" | "Morpho Blue";
+        let from: P;
+        let to: P;
         let rebalanceAmount: string;
         let reason: string;
 
-        // For aggressive (80%), prefer moving to get better rates
+        const maxPct = Math.max(aavePercent, compoundPercent, morphoPercent);
+        const minPct = Math.min(aavePercent, compoundPercent, morphoPercent);
+        const fromProtocol = (): P => {
+          if (aavePercent === maxPct) return "Aave v3";
+          if (compoundPercent === maxPct) return "Compound v3";
+          return "Morpho Blue";
+        };
+        const toProtocol = (): P => {
+          if (aavePercent === minPct) return "Aave v3";
+          if (compoundPercent === minPct) return "Compound v3";
+          return "Morpho Blue";
+        };
+
         if (riskLevel === "aggressive") {
-          if (aavePercent > 80) {
-            from = "Aave v3";
-            to = "Compound v3";
-            rebalanceAmount = `$${(aaveNum * 0.3).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-            reason = "Rebalance aggressive allocation: move from Aave to Compound";
-          } else if (compoundPercent > 80) {
-            from = "Compound v3";
-            to = "Aave v3";
-            rebalanceAmount = `$${(compoundNum * 0.3).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-            reason = "Rebalance aggressive allocation: move from Compound to Aave";
+          if (maxPct > 80) {
+            from = fromProtocol();
+            to = toProtocol();
+            if (from === to) {
+              from = "Aave v3";
+              to = "Morpho Blue";
+            }
+            rebalanceAmount = `$${(totalNum * 0.2).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+            reason = "Rebalance aggressive allocation across Aave, Compound, and Morpho";
           } else {
-            // Default: move towards higher APY
-            from = aavePercent > compoundPercent ? "Aave v3" : "Compound v3";
-            to = aavePercent > compoundPercent ? "Compound v3" : "Aave v3";
+            from = fromProtocol();
+            to = toProtocol();
+            if (from === to) {
+              from = "Compound v3";
+              to = "Morpho Blue";
+            }
             rebalanceAmount = `$${(totalNum * 0.2).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
             reason = "Manual rebalance triggered - optimizing allocation";
           }
         } else {
-          // For balanced/conservative: smaller adjustments
-          from = aavePercent > 50 ? "Aave v3" : "Compound v3";
-          to = aavePercent > 50 ? "Compound v3" : "Aave v3";
+          from = fromProtocol();
+          to = toProtocol();
+          if (from === to) {
+            from = "Aave v3";
+            to = "Compound v3";
+          }
           rebalanceAmount = `$${(totalNum * 0.15).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
           reason = "Periodic rebalance - maintaining target allocation";
         }
@@ -133,6 +168,28 @@ export function RebalanceTable() {
                 </div>
                 <div className="mt-1 text-right text-[10px] text-neutral-600">
                   {compoundPercentage}% of position
+                </div>
+              </div>
+
+              {/* Morpho */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-violet-500"></div>
+                    <span className="text-xs font-semibold text-brand-black">Morpho Blue</span>
+                  </div>
+                  <span className="text-xs font-bold text-brand-black">
+                    ${parseFloat(morphoBalance).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="w-full bg-neutral-100 rounded-full h-2">
+                  <div
+                    className="bg-violet-500 h-2 rounded-full transition-all duration-500"
+                    style={{ width: `${morphoPercentage}%` }}
+                  ></div>
+                </div>
+                <div className="mt-1 text-right text-[10px] text-neutral-600">
+                  {morphoPercentage}% of position
                 </div>
               </div>
 

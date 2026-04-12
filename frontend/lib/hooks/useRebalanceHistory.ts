@@ -1,12 +1,14 @@
 import { useCallback, useState, useEffect } from "react";
 import { useAccount } from "wagmi";
 
+export type RebalanceProtocolLabel = "Aave v3" | "Compound v3" | "Morpho Blue";
+
 export interface RebalanceEntry {
   id: string;
   when: string;
   timestamp: number;
-  from: "Aave v3" | "Compound v3";
-  to: "Aave v3" | "Compound v3";
+  from: RebalanceProtocolLabel;
+  to: RebalanceProtocolLabel;
   amount: string;
   reason: string;
 }
@@ -58,12 +60,7 @@ export function useRebalanceHistory() {
 
   // Add a new rebalance entry
   const addRebalanceEntry = useCallback(
-    (
-      from: "Aave v3" | "Compound v3",
-      to: "Aave v3" | "Compound v3",
-      amount: string,
-      reason: string
-    ) => {
+    (from: RebalanceProtocolLabel, to: RebalanceProtocolLabel, amount: string, reason: string) => {
       const newEntry: RebalanceEntry = {
         id: `rebalance_${Date.now()}`,
         when: new Date().toLocaleString("en-US", {

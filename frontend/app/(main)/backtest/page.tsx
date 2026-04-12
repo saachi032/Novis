@@ -8,8 +8,8 @@ export default function BacktestPage() {
           <p className="text-sm uppercase tracking-[0.4em] text-brand-green">On-chain simulation</p>
           <h1 className="text-4xl font-bold sm:text-5xl">DeFi yield optimizer backtest</h1>
           <p className="text-base text-white/70">
-            Uses the full <code>defiyeildpool.json</code> manifest for Aave v3 and Compound v3 USDC pools, pulls
-            historical APY from DefiLlama, and runs the same gas-aware switching rules as the Python backtest.
+            Uses the full <code>defiyeildpool.json</code> manifest for Aave v3, Compound v3, and Morpho USDC pools,
+            pulls historical APY from DefiLlama, and runs the same gas-aware switching rules as the Python backtest.
           </p>
         </div>
 

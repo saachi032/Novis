@@ -49,10 +49,11 @@ export function useUserVaultShares(address?: string) {
 }
 
 /**
- * Get current APY for specific protocol (Aave or Compound)
+ * Get current APY for a lending protocol (bps on-chain).
  */
-export function useProtocolAPY(protocol: "aave" | "compound") {
-  const functionName = protocol === "aave" ? "getAaveAPY" : "getCompoundAPY";
+export function useProtocolAPY(protocol: "aave" | "compound" | "morpho") {
+  const functionName =
+    protocol === "aave" ? "getAaveAPY" : protocol === "compound" ? "getCompoundAPY" : "getMorphoAPY";
 
   const { data, isLoading, error } = useReadContract({
     address: BASE_SEPOLIA_ADDRESSES.strategyRouter,
@@ -72,25 +73,25 @@ export function useProtocolAPY(protocol: "aave" | "compound") {
 }
 
 /**
- * Get both Aave and Compound APYs
+ * Get Aave, Compound, and Morpho APYs (simple average for a rough blended headline).
  */
 export function useVaultAPYs() {
   const aave = useProtocolAPY("aave");
   const compound = useProtocolAPY("compound");
+  const morpho = useProtocolAPY("morpho");
 
   const aaveRate = parseFloat(aave.apy);
   const compoundRate = parseFloat(compound.apy);
-
-  // Calculate blended APY (weighted average)
-  // Default allocation is 42% Aave, 58% Compound (from current demo)
-  const blendedAPY = aaveRate * 0.42 + compoundRate * 0.58;
+  const morphoRate = parseFloat(morpho.apy);
+  const blendedAPY = (aaveRate + compoundRate + morphoRate) / 3;
 
   return {
     aaveAPY: aave.apy,
     compoundAPY: compound.apy,
+    morphoAPY: morpho.apy,
     blendedAPY: blendedAPY.toFixed(2),
-    isLoading: aave.isLoading || compound.isLoading,
-    error: aave.error || compound.error,
+    isLoading: aave.isLoading || compound.isLoading || morpho.isLoading,
+    error: aave.error || compound.error || morpho.error,
   };
 }
 

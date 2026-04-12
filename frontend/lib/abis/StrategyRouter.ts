@@ -7,6 +7,7 @@ export const STRATEGY_ROUTER_ABI = [
     outputs: [
       { name: 'aaveAPY', type: 'uint256' },
       { name: 'compoundAPY', type: 'uint256' },
+      { name: 'morphoAPY', type: 'uint256' },
     ],
   },
   {
@@ -25,12 +26,20 @@ export const STRATEGY_ROUTER_ABI = [
   },
   {
     type: 'function',
-    name: 'getUserPosition',
+    name: 'getMorphoAPY',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint256' }],
+  },
+  {
+    type: 'function',
+    name: 'getUserProtocolBalances',
     stateMutability: 'view',
     inputs: [{ name: 'user', type: 'address' }],
     outputs: [
       { name: 'aaveBalance', type: 'uint256' },
       { name: 'compoundBalance', type: 'uint256' },
+      { name: 'morphoBalance', type: 'uint256' },
     ],
   },
   {
@@ -67,6 +76,7 @@ export const STRATEGY_ROUTER_ABI = [
     inputs: [
       { name: 'aaveAPYBps', type: 'uint256' },
       { name: 'compoundAPYBps', type: 'uint256' },
+      { name: 'morphoAPYBps', type: 'uint256' },
     ],
     outputs: [],
   },

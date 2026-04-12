@@ -22,7 +22,7 @@ type ApiStrategy = {
   history: number[];
 };
 
-type ApyRow = { day: string; aave: number; compound: number };
+type ApyRow = { day: string; aave: number; compound: number; morpho: number };
 
 type SwitchEvent = { day: string; index: number; reason: string };
 
@@ -39,6 +39,7 @@ type BacktestPayload = {
   apys: {
     aave: number;
     compound: number;
+    morpho: number;
   };
   gasCost: number;
   strategies: ApiStrategy[];
@@ -53,6 +54,7 @@ const colorMap: Record<string, string> = {
   dynamic: "#10b981",
   "static-aave": "#60a5fa",
   "static-compound": "#f97316",
+  "static-morpho": "#8b5cf6",
 };
 
 const formatCurrency = (value: number) =>
@@ -142,7 +144,8 @@ export function BacktestSimulator({ initialCapital = 1000 }: { initialCapital?: 
       idx: i,
       aavePct: Number((r.aave * 100).toFixed(4)),
       compoundPct: Number((r.compound * 100).toFixed(4)),
-      maxPct: Number((Math.max(r.aave, r.compound) * 100).toFixed(4)),
+      morphoPct: Number((r.morpho * 100).toFixed(4)),
+      maxPct: Number((Math.max(r.aave, r.compound, r.morpho) * 100).toFixed(4)),
     }));
   }, [payload?.apySeries]);
 
@@ -151,12 +154,14 @@ export function BacktestSimulator({ initialCapital = 1000 }: { initialCapital?: 
     const dyn = chartStrategies.find((s) => s.label === "dynamic");
     const sa = chartStrategies.find((s) => s.label === "static-aave");
     const sc = chartStrategies.find((s) => s.label === "static-compound");
+    const sm = chartStrategies.find((s) => s.label === "static-morpho");
     if (!dyn?.history.length) return [];
     return dyn.history.map((v, i) => ({
       day: payload.apySeries[i]?.day ?? String(i),
       dynamic: v,
       staticAave: sa?.history[i],
       staticCompound: sc?.history[i],
+      staticMorpho: sm?.history[i],
     }));
   }, [payload, chartStrategies]);
 
@@ -167,11 +172,11 @@ export function BacktestSimulator({ initialCapital = 1000 }: { initialCapital?: 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-2xl">
           <p className="text-sm uppercase tracking-[0.3em] text-brand-green">USDC optimizer</p>
-          <h2 className="text-3xl font-bold text-brand-black">Aave v3 ↔ Compound v3</h2>
+          <h2 className="text-3xl font-bold text-brand-black">Aave v3 · Compound v3 · Morpho</h2>
           <p className="mt-2 text-sm text-neutral-600">
-            Historical APY from DefiLlama drives a daily simulation. Capital curves and APYs are computed from the
-            same aligned series as the API — no dummy curves. Adjust risk and how often the strategy is allowed to
-            re-check for a move; use the brush under each chart to zoom the time window.
+            Historical APY from DefiLlama drives a daily simulation across three USDC venues. Capital curves and APYs
+            use the same aligned series as the API. Adjust risk and how often the strategy may re-check for a move;
+            use the brush under each chart to zoom the time window.
           </p>
         </div>
 
@@ -281,7 +286,7 @@ export function BacktestSimulator({ initialCapital = 1000 }: { initialCapital?: 
                       tickFormatter={(v) => `${Number(v).toFixed(1)}%`}
                     />
                     <Tooltip
-                      formatter={(v: number) => [`${v.toFixed(3)}%`, ""]}
+                      formatter={(v: number | undefined) => [`${Number(v ?? 0).toFixed(3)}%`, ""]}
                       labelFormatter={(l) => l}
                       contentStyle={{ borderRadius: 12, border: "1px solid #e5e7eb" }}
                     />
@@ -292,6 +297,14 @@ export function BacktestSimulator({ initialCapital = 1000 }: { initialCapital?: 
                       dataKey="compoundPct"
                       name="Compound v3"
                       stroke="#f97316"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="morphoPct"
+                      name="Morpho"
+                      stroke="#8b5cf6"
                       strokeWidth={2}
                       dot={false}
                     />
@@ -341,8 +354,8 @@ export function BacktestSimulator({ initialCapital = 1000 }: { initialCapital?: 
             <section>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neutral-500">Capital (simulated)</p>
               <p className="text-sm text-neutral-600">
-                Green: dynamic strategy using the rules above. Blue / orange: stay 100% in one venue on the same daily
-                APY path.
+                Green: dynamic strategy using the rules above. Blue, orange, violet: stay 100% in one venue on the same
+                daily APY path.
               </p>
               <div className="mt-3 h-[48vh] min-h-[340px] max-h-[520px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
@@ -384,13 +397,21 @@ export function BacktestSimulator({ initialCapital = 1000 }: { initialCapital?: 
                       strokeWidth={1.8}
                       dot={false}
                     />
+                    <Line
+                      type="monotone"
+                      dataKey="staticMorpho"
+                      name="Static Morpho"
+                      stroke={colorMap["static-morpho"]}
+                      strokeWidth={1.8}
+                      dot={false}
+                    />
                     <Brush dataKey="day" height={32} stroke="#10b981" travellerWidth={8} tickFormatter={() => ""} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
             </section>
 
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {chartStrategies.map((strategy) => (
                 <div
                   key={strategy.label}
@@ -409,7 +430,7 @@ export function BacktestSimulator({ initialCapital = 1000 }: { initialCapital?: 
             </div>
 
             {summary && (
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="rounded-2xl border border-brand-green/30 bg-emerald-50 p-4 text-brand-green">
                   <p className="text-sm uppercase tracking-[0.3em]">Dynamic profit</p>
                   <p className="mt-1 text-2xl font-semibold">{formatPercent(summary.profitPct)}</p>
@@ -422,6 +443,10 @@ export function BacktestSimulator({ initialCapital = 1000 }: { initialCapital?: 
                 <div className="rounded-2xl border border-neutral-200 bg-white p-4 text-brand-black">
                   <p className="text-sm text-neutral-600">Spot APY · Compound v3</p>
                   <p className="text-xl font-semibold">{formatPercent((payload.apys.compound ?? 0) * 100)}</p>
+                </div>
+                <div className="rounded-2xl border border-neutral-200 bg-white p-4 text-brand-black">
+                  <p className="text-sm text-neutral-600">Spot APY · Morpho</p>
+                  <p className="text-xl font-semibold">{formatPercent((payload.apys.morpho ?? 0) * 100)}</p>
                 </div>
               </div>
             )}

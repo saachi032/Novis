@@ -44,12 +44,13 @@ export function ContractTest() {
   const assetsFormatted = totalAssets ? formatUSDC(totalAssets) : '0';
   const aaveAPY = apys ? (Number(apys[0]) / 100).toFixed(2) : '0';
   const compoundAPY = apys ? (Number(apys[1]) / 100).toFixed(2) : '0';
+  const morphoAPY = apys ? (Number(apys[2]) / 100).toFixed(2) : '0';
 
   return (
     <div className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
       <h3 className="text-lg font-bold mb-4 text-gray-800">Smart Contract Connection Test</h3>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {/* Vault Shares */}
         <div className="p-4 bg-white rounded border border-gray-200">
           <p className="text-sm text-gray-600">Your Vault Shares</p>
@@ -87,6 +88,16 @@ export function ContractTest() {
             <p className="text-lg font-semibold text-gray-400">Loading...</p>
           ) : (
             <p className="text-2xl font-bold text-orange-600">{compoundAPY}%</p>
+          )}
+        </div>
+
+        {/* Morpho APY */}
+        <div className="p-4 bg-white rounded border border-gray-200">
+          <p className="text-sm text-gray-600">Morpho APY</p>
+          {isLoadingAPYs ? (
+            <p className="text-lg font-semibold text-gray-400">Loading...</p>
+          ) : (
+            <p className="text-2xl font-bold text-violet-600">{morphoAPY}%</p>
           )}
         </div>
       </div>

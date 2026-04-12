@@ -34,7 +34,7 @@ export function useForceRebalance() {
           abi: STRATEGY_ROUTER_ABI,
           functionName: "forceRebalance",
           args: [address as `0x${string}`],
-          gas: BigInt(800000), // Rebalance: withdraw + deposit to 2 protocols + state updates
+          gas: BigInt(1_200_000), // Rebalance: up to 3 protocols, multiple pass sweep
         },
         {
           onSuccess: (hash) => {
@@ -59,7 +59,7 @@ export function useForceRebalance() {
                     abi: STRATEGY_ROUTER_ABI,
                     functionName: "forceRebalance",
                     args: [address as `0x${string}`],
-                    gas: BigInt(800000), // Rebalance: withdraw + deposit to 2 protocols + state updates
+                    gas: BigInt(1_200_000), // Rebalance: up to 3 protocols, multiple pass sweep
                   },
                   {
                     onSuccess: (retryHash) => {

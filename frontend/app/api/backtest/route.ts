@@ -31,7 +31,9 @@ type ApiStrategy = {
   history: number[];
 };
 
-type ApyRow = { day: string; aave: number; compound: number };
+type Protocol = "aave" | "compound" | "morpho";
+
+type ApyRow = { day: string; aave: number; compound: number; morpho: number };
 
 type SwitchEvent = { day: string; index: number; reason: string };
 
@@ -45,7 +47,7 @@ type SimulationParams = {
 };
 
 type BacktestResponse = {
-  apys: { aave: number; compound: number };
+  apys: { aave: number; compound: number; morpho: number };
   gasCost: number;
   strategies: ApiStrategy[];
   initialCapital: number;
@@ -54,6 +56,8 @@ type BacktestResponse = {
   projectedGainSample: number;
   simulationParams: SimulationParams;
 };
+
+const PROTO_ORDER: Protocol[] = ["aave", "compound", "morpho"];
 
 function parseRiskLevel(raw: string | null): RiskLevel {
   const x = (raw ?? "medium").trim().toLowerCase();
@@ -109,6 +113,11 @@ function bestCompoundPool(manifest: PoolEntry[]): PoolEntry | null {
   );
 }
 
+/** Morpho Blue / MetaMorpho style rows on DefiLlama (project morpho, morpho-v1, …). */
+function bestMorphoPool(manifest: PoolEntry[]): PoolEntry | null {
+  return bestPool(manifest, (p) => p === "morpho" || p.startsWith("morpho-"));
+}
+
 function toDecimal(apy?: number | null): number {
   if (apy == null || Number.isNaN(apy)) return 0;
   return apy / 100;
@@ -131,14 +140,21 @@ function bucketDaily(points: ChartPoint[]): Map<string, number> {
   return m;
 }
 
-function alignApySeries(aaveChart: ChartPoint[], compoundChart: ChartPoint[]): ApyRow[] {
+function alignApySeries(
+  aaveChart: ChartPoint[],
+  compoundChart: ChartPoint[],
+  morphoChart: ChartPoint[]
+): ApyRow[] {
   const A = bucketDaily(aaveChart);
   const B = bucketDaily(compoundChart);
-  const days = [...new Set([...A.keys(), ...B.keys()])].sort();
+  const M = bucketDaily(morphoChart);
+  const days = [...new Set([...A.keys(), ...B.keys(), ...M.keys()])].sort();
   let la = 0;
   let lb = 0;
+  let lm = 0;
   let seenA = false;
   let seenB = false;
+  let seenM = false;
   const raw: ApyRow[] = [];
   for (const d of days) {
     if (A.has(d)) {
@@ -149,8 +165,12 @@ function alignApySeries(aaveChart: ChartPoint[], compoundChart: ChartPoint[]): A
       lb = B.get(d)!;
       seenB = true;
     }
-    if (seenA && seenB) {
-      raw.push({ day: d, aave: la, compound: lb });
+    if (M.has(d)) {
+      lm = M.get(d)!;
+      seenM = true;
+    }
+    if (seenA && seenB && seenM) {
+      raw.push({ day: d, aave: la, compound: lb, morpho: lm });
     }
   }
   if (!raw.length) return [];
@@ -159,32 +179,47 @@ function alignApySeries(aaveChart: ChartPoint[], compoundChart: ChartPoint[]): A
   return raw.filter((row) => new Date(row.day).getTime() >= start);
 }
 
+function bestProtocolFromRow(row: ApyRow): Protocol {
+  let best: Protocol = "aave";
+  let bestVal = row.aave;
+  for (const p of PROTO_ORDER) {
+    const v = row[p];
+    if (v > bestVal) {
+      bestVal = v;
+      best = p;
+    }
+  }
+  return best;
+}
+
 function decideStep(
-  current: "aave" | "compound",
-  aaveApy: number,
-  compoundApy: number,
+  current: Protocol,
+  row: ApyRow,
   capital: number,
   dayIndex: number,
   lastSwitchIndex: number,
   apyThreshold: number,
   cooldownDays: number
-): { shouldSwitch: boolean; reason: string; candidate: "aave" | "compound"; projectedGain: number } {
-  const candidate: "aave" | "compound" = current === "aave" ? "compound" : "aave";
-  const curApy = current === "aave" ? aaveApy : compoundApy;
-  const candApy = candidate === "aave" ? aaveApy : compoundApy;
+): { shouldSwitch: boolean; reason: string; candidate: Protocol; projectedGain: number } {
+  const best = bestProtocolFromRow(row);
+  if (best === current) {
+    return { shouldSwitch: false, reason: "Already on highest APY", candidate: current, projectedGain: 0 };
+  }
+  const curApy = row[current];
+  const candApy = row[best];
   const apyDiff = candApy - curApy;
   if (apyDiff <= apyThreshold) {
-    return { shouldSwitch: false, reason: "APY difference below threshold", candidate, projectedGain: 0 };
+    return { shouldSwitch: false, reason: "APY difference below threshold", candidate: best, projectedGain: 0 };
   }
   const cooldownOk = dayIndex - lastSwitchIndex >= cooldownDays;
   const projectedGain = apyDiff * capital * (TIME_WINDOW_DAYS / 365);
   if (!cooldownOk) {
-    return { shouldSwitch: false, reason: "Cooldown not passed", candidate, projectedGain };
+    return { shouldSwitch: false, reason: "Cooldown not passed", candidate: best, projectedGain };
   }
   if (projectedGain <= GAS_COST_USD) {
-    return { shouldSwitch: false, reason: "Not profitable after gas", candidate, projectedGain };
+    return { shouldSwitch: false, reason: "Not profitable after gas", candidate: best, projectedGain };
   }
-  return { shouldSwitch: true, reason: "Switched: projected gain > gas", candidate, projectedGain };
+  return { shouldSwitch: true, reason: "Switched: projected gain > gas", candidate: best, projectedGain };
 }
 
 function simulateDynamic(
@@ -196,7 +231,7 @@ function simulateDynamic(
   const apyThreshold = effectiveApyThreshold(risk, BASE_APY_THRESHOLD);
   const cooldownDays = effectiveCooldownDays(risk, BASE_COOLDOWN_DAYS);
   let capital = initialCapital;
-  let current: "aave" | "compound" = "aave";
+  let current: Protocol = "aave";
   let lastSwitchIndex = -Math.max(cooldownDays, intervalDays);
   const history: number[] = [];
   const switchEvents: SwitchEvent[] = [];
@@ -208,8 +243,7 @@ function simulateDynamic(
     if (intervalOk) {
       const { shouldSwitch, reason, candidate } = decideStep(
         current,
-        row.aave,
-        row.compound,
+        row,
         capital,
         i,
         lastSwitchIndex,
@@ -224,19 +258,18 @@ function simulateDynamic(
         switchEvents.push({ day: row.day, index: i, reason });
       }
     }
-    const grow = current === "aave" ? row.aave : row.compound;
+    const grow = row[current];
     capital *= 1 + grow / 365;
     history.push(Number(capital.toFixed(4)));
   }
   return { history, switches, switchEvents };
 }
 
-function simulateStatic(series: ApyRow[], protocol: "aave" | "compound", initialCapital: number): number[] {
+function simulateStatic(series: ApyRow[], protocol: Protocol, initialCapital: number): number[] {
   let capital = initialCapital;
-  const key = protocol;
   const history: number[] = [];
   for (const row of series) {
-    capital *= 1 + row[key] / 365;
+    capital *= 1 + row[protocol] / 365;
     history.push(Number(capital.toFixed(4)));
   }
   return history;
@@ -259,23 +292,28 @@ export async function GET(request: Request) {
     const manifest = await loadManifest();
     const aavePool = bestAavePool(manifest);
     const compoundPool = bestCompoundPool(manifest);
+    const morphoPool = bestMorphoPool(manifest);
 
-    if (!aavePool?.pool || !compoundPool?.pool) {
+    if (!aavePool?.pool || !compoundPool?.pool || !morphoPool?.pool) {
       return NextResponse.json(
-        { error: "Could not locate both Aave v3 and Compound USDC pools in defiyeildpool.json." },
+        {
+          error:
+            "Could not locate Aave v3, Compound, and Morpho USDC pools in defiyeildpool.json.",
+        },
         { status: 400 }
       );
     }
 
-    const [aaveChart, compoundChart] = await Promise.all([
+    const [aaveChart, compoundChart, morphoChart] = await Promise.all([
       fetchChart(aavePool.pool),
       fetchChart(compoundPool.pool),
+      fetchChart(morphoPool.pool),
     ]);
 
-    const apySeries = alignApySeries(aaveChart, compoundChart);
+    const apySeries = alignApySeries(aaveChart, compoundChart, morphoChart);
     if (!apySeries.length) {
       return NextResponse.json(
-        { error: "Chart data unavailable for one or both pools. Try again later." },
+        { error: "Chart data unavailable for one or more pools. Try again later." },
         { status: 502 }
       );
     }
@@ -287,6 +325,7 @@ export async function GET(request: Request) {
     const last = apySeries[apySeries.length - 1]!;
     const spotAave = last.aave || toDecimal(aavePool.apy);
     const spotCompound = last.compound || toDecimal(compoundPool.apy);
+    const spotMorpho = last.morpho || toDecimal(morphoPool.apy);
 
     const effApy = effectiveApyThreshold(riskLevel, BASE_APY_THRESHOLD);
     const effCd = effectiveCooldownDays(riskLevel, BASE_COOLDOWN_DAYS);
@@ -299,15 +338,22 @@ export async function GET(request: Request) {
     );
     const aaveHist = simulateStatic(apySeries, "aave", initialCapital);
     const compoundHist = simulateStatic(apySeries, "compound", initialCapital);
+    const morphoHist = simulateStatic(apySeries, "morpho", initialCapital);
 
     const dynamicStrategy = summarizeStrategy("dynamic", dynamicHistory, initialCapital, switches);
     const staticAave = summarizeStrategy("static-aave", aaveHist, initialCapital, 0);
     const staticCompound = summarizeStrategy("static-compound", compoundHist, initialCapital, 0);
+    const staticMorpho = summarizeStrategy("static-morpho", morphoHist, initialCapital, 0);
 
+    const spotRow: ApyRow = {
+      day: last.day,
+      aave: spotAave,
+      compound: spotCompound,
+      morpho: spotMorpho,
+    };
     const sample = decideStep(
       "aave",
-      spotAave,
-      spotCompound,
+      spotRow,
       initialCapital,
       0,
       -Math.max(effCd, rebalanceIntervalDays),
@@ -325,9 +371,9 @@ export async function GET(request: Request) {
     };
 
     const body: BacktestResponse = {
-      apys: { aave: spotAave, compound: spotCompound },
+      apys: { aave: spotAave, compound: spotCompound, morpho: spotMorpho },
       gasCost: GAS_COST_USD,
-      strategies: [dynamicStrategy, staticAave, staticCompound],
+      strategies: [dynamicStrategy, staticAave, staticCompound, staticMorpho],
       initialCapital,
       apySeries,
       switchEvents,

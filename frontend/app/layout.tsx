@@ -29,9 +29,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('novis-theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark');}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body
-        className={`${inter.variable} ${workSans.variable} min-h-screen bg-brand-bg font-body antialiased text-brand-black`}
+        className={`${inter.variable} ${workSans.variable} min-h-screen bg-brand-bg font-body antialiased text-brand-black transition-colors duration-200 dark:bg-[#1a1f1e] dark:text-neutral-100`}
         suppressHydrationWarning
       >
         <Providers>{children}</Providers>

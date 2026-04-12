@@ -69,7 +69,7 @@ export function CheckingDuration({ currentRisk }: CheckingDurationProps) {
           </p>
         </div>
         <span
-          className="flex h-6 w-6 shrink-0 cursor-help items-center justify-center rounded-full border border-brand-gray bg-brand-bg text-[10px] font-bold text-neutral-600"
+          className="flex h-6 w-6 shrink-0 cursor-help items-center justify-center rounded-full border border-brand-gray bg-brand-bg text-[10px] font-bold text-neutral-600 dark:text-neutral-100"
           title="More frequent checks = faster response to APY changes, but higher gas costs. Less frequent = lower costs but slower adaptation."
         >
           ?
@@ -86,7 +86,7 @@ export function CheckingDuration({ currentRisk }: CheckingDurationProps) {
             className={`rounded-lg border px-3 py-2 text-left text-xs transition duration-300 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed ${
               duration === d.id
                 ? "border-brand-green bg-brand-green/10 text-brand-black"
-                : "border-brand-gray/80 bg-white text-neutral-600 hover:border-brand-gray"
+                : "border-brand-gray/80 bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-200 hover:border-brand-gray"
             }`}
           >
             <span className="text-sm font-semibold block">{d.label}</span>

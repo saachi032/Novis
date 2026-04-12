@@ -280,14 +280,14 @@ export function DepositPanel() {
 
         {/* Risk & Duration Selection */}
         {depositAmount && (
-          <div className="rounded-lg bg-brand-bg/50 p-4 space-y-4">
-            <p className="text-xs font-semibold text-brand-black">
+          <div className="rounded-lg bg-brand-bg/50 p-4 space-y-4 dark:text-neutral-100">
+            <p className="text-xs font-semibold text-brand-black dark:text-neutral-100">
               Configure this investment's risk profile
             </p>
 
             {/* Risk Level */}
             <div>
-              <label className="block text-xs font-semibold text-neutral-700 mb-2">
+              <label className="block text-xs font-semibold text-neutral-700 mb-2 dark:text-neutral-300">
                 Risk Level
               </label>
               <div className="grid grid-cols-3 gap-2">
@@ -298,7 +298,7 @@ export function DepositPanel() {
                     className={`rounded-lg border px-2.5 py-2 text-xs transition ${
                       risk === level.id
                         ? "border-brand-green bg-brand-green/10 text-brand-black font-semibold"
-                        : "border-brand-gray/60 bg-white text-neutral-600 hover:border-brand-gray"
+                        : "border-brand-gray/60 bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-200 hover:border-brand-gray"
                     }`}
                   >
                     <div className="font-semibold text-[11px]">{level.label}</div>
@@ -310,7 +310,7 @@ export function DepositPanel() {
 
             {/* Duration */}
             <div>
-              <label className="block text-xs font-semibold text-neutral-700 mb-2">
+              <label className="block text-xs font-semibold text-neutral-700 mb-2 dark:text-neutral-300">
                 Rebalance Frequency
               </label>
               <div className="grid grid-cols-5 gap-1.5">
@@ -321,7 +321,7 @@ export function DepositPanel() {
                     className={`rounded-lg border px-2 py-2 text-[10px] transition font-semibold ${
                       duration === dur.id
                         ? "border-brand-green bg-brand-green/10 text-brand-black"
-                        : "border-brand-gray/60 bg-white text-neutral-600 hover:border-brand-gray"
+                        : "border-brand-gray/60 bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-200 hover:border-brand-gray"
                     }`}
                   >
                     {dur.label}
@@ -331,8 +331,8 @@ export function DepositPanel() {
             </div>
 
             {/* Summary */}
-            <div className="rounded-lg border border-brand-green/30 bg-brand-green/5 p-3">
-              <p className="text-xs text-brand-black">
+            <div className="rounded-lg border border-brand-green/30 bg-brand-green/5 p-3 dark:text-neutral-100">
+              <p className="text-xs text-brand-black dark:text-neutral-100">
                 <strong>Investment Strategy:</strong> {risk} risk, {duration} rebalance checks
               </p>
             </div>

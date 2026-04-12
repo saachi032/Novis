@@ -12,11 +12,11 @@ export function HeroSection() {
       <div className="pointer-events-none absolute bottom-8 right-[5%] h-48 w-48 rounded-full bg-brand-gray/30 sm:h-72 sm:w-72" />
 
       <div className="relative mx-auto max-w-6xl">
-        <div className="relative overflow-hidden rounded-3xl border border-brand-gray/70 bg-white p-8 shadow-card sm:p-12 lg:p-16">
-          <span className="pointer-events-none absolute right-6 top-6 rounded-full border border-brand-gray bg-brand-bg px-3 py-1.5 text-xs font-medium text-brand-black sm:right-10 sm:top-10">
+        <div className="relative overflow-hidden rounded-3xl border border-brand-gray/70 bg-white dark:bg-neutral-900 p-8 shadow-card sm:p-12 lg:p-16">
+          <span className="pointer-events-none absolute right-6 top-6 rounded-full border border-brand-gray bg-brand-bg dark:bg-neutral-800 px-3 py-1.5 text-xs font-medium text-brand-black dark:text-neutral-100 sm:right-10 sm:top-10">
             Bitcoin
           </span>
-          <span className="pointer-events-none absolute right-24 top-24 rounded-full border border-brand-gray bg-white px-3 py-1.5 text-xs font-medium text-brand-black sm:right-36 sm:top-28">
+          <span className="pointer-events-none absolute right-24 top-24 rounded-full border border-brand-gray bg-white dark:bg-neutral-800 px-3 py-1.5 text-xs font-medium text-brand-black dark:text-neutral-100 sm:right-36 sm:top-28">
             Ethereum
           </span>
 
@@ -42,7 +42,7 @@ export function HeroSection() {
                 </ConnectButton.Custom>
                 <a
                   href="/features"
-                  className="inline-flex items-center justify-center rounded-full border border-brand-gray bg-white px-8 py-3.5 text-sm font-semibold text-brand-black transition duration-300 hover:scale-105 hover:bg-brand-bg"
+                  className="inline-flex items-center justify-center rounded-full border border-brand-gray bg-white dark:bg-neutral-800 px-8 py-3.5 text-sm font-semibold text-brand-black dark:text-neutral-100 transition duration-300 hover:scale-105 hover:bg-brand-bg dark:hover:bg-neutral-700"
                 >
                   Learn more
                 </a>

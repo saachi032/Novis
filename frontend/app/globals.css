@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #FAFAF5;
+  --foreground: #000000;
+  --brand-green: #557571;
+  /* --brand-yellow: #EDE087; */
+  --brand-gray: #d9d9d9;
+}
+
+.dark {
+  --background: #1a1f1e;
+  --foreground: #f4f4f0;
+  --brand-gray: #4a5553;
+}
+
+body {
+  color: var(--foreground);
+  background-color: var(--background);
+  font-family: var(--font-body), system-ui, sans-serif;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .dark .text-neutral-500 {
+    @apply text-neutral-300;
+  }
+
+  .dark .text-neutral-600 {
+    @apply text-neutral-400;
+  }
+
+  .dark .text-neutral-700 {
+    @apply text-neutral-300;
+  }
+
+  .dark .text-neutral-800 {
+    @apply text-neutral-200;
+  }
+}
+
+@layer components {
+  .surface-card {
+    @apply rounded-2xl border border-brand-gray/80 bg-white text-brand-black shadow-soft;
+  }
+}

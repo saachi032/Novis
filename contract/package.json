@@ -1,0 +1,24 @@
+{
+  "name": "defi-yield-optimizer",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "hardhat compile",
+    "deploy:base-sepolia": "hardhat run --network baseSepolia scripts/deploy.ts",
+    "mock:activity": "hardhat run --network baseSepolia scripts/mock-activity.ts",
+    "mock:admin": "hardhat run --network baseSepolia scripts/mock-admin.ts",
+    "mock:deposit": "hardhat run --network baseSepolia scripts/mock-deposit.ts",
+    "mock:withdraw": "hardhat run --network baseSepolia scripts/mock-withdraw.ts",
+    "debug:deposit": "hardhat run --network baseSepolia scripts/debug-deposit.ts"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-viem": "^3.0.0",
+    "@openzeppelin/contracts": "^5.2.0",
+    "@types/node": "^24.0.0",
+    "dotenv": "^17.2.3",
+    "hardhat": "^3.3.0",
+    "typescript": "^5.8.0",
+    "viem": "^2.43.0"
+  }
+}

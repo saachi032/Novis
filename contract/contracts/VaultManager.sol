@@ -76,6 +76,10 @@ contract VaultManager is ERC4626, Ownable {
         // Simple USDC-only deposit - no strategy requirement
         shares = super.deposit(assets, receiver);
 
+        if (address(strategyRouter) != address(0) && riskRegistry.hasStrategy(receiver)) {
+            _investUserAssets(assets, receiver);
+        }
+
         if (address(feeCollector) != address(0)) {
             try feeCollector.recordDeposit(assets) {} catch {}
         }
@@ -84,6 +88,10 @@ contract VaultManager is ERC4626, Ownable {
     function mint(uint256 shares, address receiver) public override returns (uint256 assets) {
         // Simple USDC-only mint - no strategy requirement
         assets = super.mint(shares, receiver);
+
+        if (address(strategyRouter) != address(0) && riskRegistry.hasStrategy(receiver)) {
+            _investUserAssets(assets, receiver);
+        }
 
         if (address(feeCollector) != address(0)) {
             try feeCollector.recordDeposit(assets) {} catch {}
@@ -100,9 +108,12 @@ contract VaultManager is ERC4626, Ownable {
         address receiver,
         address owner
     ) public override returns (uint256 shares) {
-        require(address(strategyRouter) != address(0), "strategy router not set");
+        uint256 investedBalance = _userInvestedBalance(owner);
+        if (investedBalance > 0) {
+            uint256 amountToRedeem = assets < investedBalance ? assets : investedBalance;
+            strategyRouter.redeemFunds(amountToRedeem, owner);
+        }
 
-        strategyRouter.redeemFunds(assets, owner);
         shares = super.withdraw(assets, receiver, owner);
 
         if (address(feeCollector) != address(0)) {
@@ -115,10 +126,13 @@ contract VaultManager is ERC4626, Ownable {
         address receiver,
         address owner
     ) public override returns (uint256 assets) {
-        require(address(strategyRouter) != address(0), "strategy router not set");
-
         assets = previewRedeem(shares);
-        strategyRouter.redeemFunds(assets, owner);
+        uint256 investedBalance = _userInvestedBalance(owner);
+        if (investedBalance > 0) {
+            uint256 amountToRedeem = assets < investedBalance ? assets : investedBalance;
+            strategyRouter.redeemFunds(amountToRedeem, owner);
+        }
+
         assets = super.redeem(shares, receiver, owner);
 
         if (address(feeCollector) != address(0)) {
@@ -135,6 +149,22 @@ contract VaultManager is ERC4626, Ownable {
         IERC20(asset()).safeTransfer(address(strategyRouter), assets);
         strategyRouter.investFunds(assets, user);
         emit UserAssetsInvested(user, assets);
+    }
+
+    function _userInvestedBalance(address user) internal view returns (uint256 investedBalance) {
+        if (address(strategyRouter) == address(0)) {
+            return 0;
+        }
+
+        try strategyRouter.getUserProtocolBalances(user) returns (
+            uint256 aaveBalance,
+            uint256 compoundBalance,
+            uint256 morphoBalance
+        ) {
+            return aaveBalance + compoundBalance + morphoBalance;
+        } catch {
+            return 0;
+        }
     }
 
     /// @dev Mirrors OZ `deposit` share math while USDC is already in this contract (post-swap), without a second transfer.

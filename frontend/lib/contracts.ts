@@ -1,6 +1,6 @@
 // Network: Base Sepolia
-// Contract Addresses from Latest Deployment (v16 - USDC Only, No Strategy Requirement)
-// ✅ deposit(), depositAnyStablecoin(), mint() all working with USDC only
+// Contract Addresses from the current deployment snapshot.
+// USDC deposits are the live flow. `depositAnyStablecoin` remains a legacy alias in the ABI.
 export const BASE_SEPOLIA_ADDRESSES = {
   usdc: '0x036CbD53842c5426634e7929541eC2318f3dCF7e' as const,
   usdt: '0x0a215D8ba66387DCA84B284D18c3B4ec3de6E54a' as const,

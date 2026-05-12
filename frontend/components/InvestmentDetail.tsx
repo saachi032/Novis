@@ -214,43 +214,52 @@ export function InvestmentDetail({ investment, onClose }: InvestmentDetailProps)
                   </div>
                   
                   {/* Protocol Allocation */}
-                  {txn.type === "deposit" && txn.aaveAmount && txn.compoundAmount && (
+                  {txn.type === "deposit" && (txn.aaveAmount || txn.compoundAmount || txn.morphoAmount) && (
                     <div className="bg-brand-bg/50 rounded-lg p-3 space-y-2">
                       <p className="text-xs font-semibold text-neutral-600 uppercase tracking-wide">Allocated to:</p>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div>
-                            <span className="text-xs text-neutral-600 font-medium">Aave v3</span>
+                      {[
+                        {
+                          label: "Aave v3",
+                          amount: txn.aaveAmount,
+                          pct: txn.aavePercentage,
+                          bar: "bg-blue-500",
+                        },
+                        {
+                          label: "Compound v3",
+                          amount: txn.compoundAmount,
+                          pct: txn.compoundPercentage,
+                          bar: "bg-emerald-500",
+                        },
+                        {
+                          label: "Morpho Blue",
+                          amount: txn.morphoAmount,
+                          pct: txn.morphoPercentage,
+                          bar: "bg-violet-500",
+                        },
+                      ].map((entry) => {
+                        if (!entry.amount) return null;
+                        const width = typeof entry.pct === "number" ? `${entry.pct}%` : "0%";
+                        return (
+                          <div key={entry.label} className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <div className={`w-2.5 h-2.5 rounded-full ${entry.bar}`}></div>
+                                <span className="text-xs text-neutral-600 font-medium">{entry.label}</span>
+                              </div>
+                              <span className="text-xs font-semibold text-brand-black">
+                                ${parseFloat(entry.amount).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                {typeof entry.pct === "number" ? ` (${entry.pct}%)` : ""}
+                              </span>
+                            </div>
+                            <div className="w-full bg-neutral-200 rounded-full h-1.5">
+                              <div
+                                className={`${entry.bar} h-1.5 rounded-full`}
+                                style={{ width }}
+                              />
+                            </div>
                           </div>
-                          <span className="text-xs font-semibold text-brand-black">
-                            ${parseFloat(txn.aaveAmount).toLocaleString(undefined, { maximumFractionDigits: 2 })} ({txn.aavePercentage}%)
-                          </span>
-                        </div>
-                        <div className="w-full bg-neutral-200 rounded-full h-1.5">
-                          <div
-                            className="bg-blue-500 h-1.5 rounded-full"
-                            style={{ width: `${txn.aavePercentage || 42}%` }}
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
-                            <span className="text-xs text-neutral-600 font-medium">Compound v3</span>
-                          </div>
-                          <span className="text-xs font-semibold text-brand-black">
-                            ${parseFloat(txn.compoundAmount).toLocaleString(undefined, { maximumFractionDigits: 2 })} ({txn.compoundPercentage}%)
-                          </span>
-                        </div>
-                        <div className="w-full bg-neutral-200 rounded-full h-1.5">
-                          <div
-                            className="bg-emerald-500 h-1.5 rounded-full"
-                            style={{ width: `${txn.compoundPercentage || 58}%` }}
-                          />
-                        </div>
-                      </div>
+                        );
+                      })}
                     </div>
                   )}
                   

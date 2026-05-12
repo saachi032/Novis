@@ -1,5 +1,8 @@
-import { useCallback, useState, useEffect } from "react";
-import { useAccount } from "wagmi";
+import { useCallback, useEffect, useState } from "react";
+import { useAccount, useChainId, usePublicClient } from "wagmi";
+import { formatUnits } from "viem";
+import { BASE_SEPOLIA_ADDRESSES } from "@/lib/contracts";
+import { STRATEGY_ROUTER_ABI } from "@/lib/abis/StrategyRouter";
 
 export type RebalanceProtocolLabel = "Aave v3" | "Compound v3" | "Morpho Blue";
 
@@ -13,89 +16,115 @@ export interface RebalanceEntry {
   reason: string;
 }
 
+const CHAIN_ID = 84532;
+
+function protocolLabel(protocol: number): RebalanceProtocolLabel {
+  if (protocol === 0) return "Aave v3";
+  if (protocol === 1) return "Compound v3";
+  return "Morpho Blue";
+}
+
+function formatUtc(timestamp: number) {
+  return new Date(timestamp)
+    .toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      timeZone: "UTC",
+    })
+    .replace(/GMT[\+\-]/, "") + " UTC";
+}
+
 /**
- * Hook to manage rebalance history
+ * Hook to manage rebalance history from on-chain events.
  */
 export function useRebalanceHistory() {
   const { address } = useAccount();
+  const chainId = useChainId();
+  const publicClient = usePublicClient();
   const [history, setHistory] = useState<RebalanceEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load from localStorage on mount
-  useEffect(() => {
-    if (!address) {
+  const refreshHistory = useCallback(async () => {
+    if (!address || !publicClient || chainId !== CHAIN_ID) {
       setHistory([]);
       setIsLoading(false);
       return;
     }
 
+    setIsLoading(true);
+
     try {
-      const key = `rebalance_history_${address}`;
-      const stored = localStorage.getItem(key);
-      if (stored) {
-        setHistory(JSON.parse(stored));
-      }
+      const logs = await publicClient.getContractEvents({
+        address: BASE_SEPOLIA_ADDRESSES.strategyRouter,
+        abi: STRATEGY_ROUTER_ABI,
+        eventName: "UserRebalanced",
+        args: { user: address },
+        fromBlock: 0n,
+        toBlock: "latest",
+      });
+
+      const blockTimestampCache = new Map<bigint, number>();
+      const getTimestamp = async (blockNumber: bigint | null | undefined) => {
+        if (blockNumber === null || blockNumber === undefined) return Date.now();
+        const cached = blockTimestampCache.get(blockNumber);
+        if (cached) return cached;
+        const block = await publicClient.getBlock({ blockNumber });
+        const ts = Number(block.timestamp) * 1000;
+        blockTimestampCache.set(blockNumber, ts);
+        return ts;
+      };
+
+      const entries = await Promise.all(
+        (logs as any[]).map(async (log) => {
+          const timestamp = await getTimestamp(log.blockNumber);
+          const amount = formatUnits(BigInt(log.args?.amount ?? 0n), 6);
+          return {
+            id: `${log.transactionHash}-${log.logIndex ?? 0}`,
+            when: formatUtc(timestamp),
+            timestamp,
+            from: protocolLabel(Number(log.args?.fromProtocol ?? 0)),
+            to: protocolLabel(Number(log.args?.toProtocol ?? 0)),
+            amount: `$${Number(amount).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+            reason: "On-chain rebalance executed",
+          } as RebalanceEntry;
+        })
+      );
+
+      entries.sort((a, b) => b.timestamp - a.timestamp);
+      setHistory(entries);
     } catch (err) {
-      console.error("Failed to load rebalance history:", err);
+      console.error("Failed to load on-chain rebalance history:", err);
+      setHistory([]);
     } finally {
       setIsLoading(false);
     }
-  }, [address]);
+  }, [address, chainId, publicClient]);
 
-  // Save to localStorage whenever history changes
-  const saveHistory = useCallback(
-    (newHistory: RebalanceEntry[]) => {
-      if (!address) return;
+  useEffect(() => {
+    void refreshHistory();
+    const timer = setInterval(() => {
+      void refreshHistory();
+    }, 30000);
+    return () => clearInterval(timer);
+  }, [refreshHistory]);
 
-      try {
-        const key = `rebalance_history_${address}`;
-        localStorage.setItem(key, JSON.stringify(newHistory));
-        setHistory(newHistory);
-      } catch (err) {
-        console.error("Failed to save rebalance history:", err);
-      }
-    },
-    [address]
-  );
+  const addRebalanceEntry = useCallback(async (..._args: unknown[]) => {
+    await refreshHistory();
+    return null;
+  }, [refreshHistory]);
 
-  // Add a new rebalance entry
-  const addRebalanceEntry = useCallback(
-    (from: RebalanceProtocolLabel, to: RebalanceProtocolLabel, amount: string, reason: string) => {
-      const newEntry: RebalanceEntry = {
-        id: `rebalance_${Date.now()}`,
-        when: new Date().toLocaleString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          timeZone: "UTC",
-        }).replace(/GMT[\+\-]/, "") + " UTC",
-        timestamp: Date.now(),
-        from,
-        to,
-        amount,
-        reason,
-      };
-
-      const updated = [newEntry, ...history];
-      console.log("Adding rebalance entry:", newEntry);
-      console.log("Updated history:", updated);
-      saveHistory(updated);
-      return newEntry;
-    },
-    [history, saveHistory]
-  );
-
-  // Clear all history
-  const clearHistory = useCallback(() => {
-    saveHistory([]);
-  }, [saveHistory]);
+  const clearHistory = useCallback(async (..._args: unknown[]) => {
+    await refreshHistory();
+  }, [refreshHistory]);
 
   return {
     history,
     isLoading,
+    refreshHistory,
     addRebalanceEntry,
     clearHistory,
   };

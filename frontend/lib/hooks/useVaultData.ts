@@ -112,16 +112,11 @@ export function useUserPositionValue(userAddress?: string) {
     },
   });
 
-  // If shares exist, calculate position value
-  // Simplified: 1 share = total assets / total shares (share price)
   let positionValue = "0";
-  if (sharesBigInt && totalAssetsBigInt && totalSupply !== undefined) {
+  if (sharesBigInt && totalAssetsBigInt && totalSupply && totalSupply > 0n) {
     try {
-      // Share price = totalAssets / totalSupply
-      // Position value = userShares * (totalAssets / totalSupply)
-      // For now, use 1-to-1 mapping as placeholder
-      const value = formatUSDC(sharesBigInt);
-      positionValue = value;
+      const valueBigInt = (sharesBigInt * totalAssetsBigInt) / totalSupply;
+      positionValue = formatUSDC(valueBigInt);
     } catch {
       positionValue = "0";
     }

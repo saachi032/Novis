@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { useAccount, useWriteContract } from "wagmi";
+import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { BASE_SEPOLIA_ADDRESSES } from "@/lib/contracts";
 import { RISK_REGISTRY_ABI } from "@/lib/abis/RiskRegistry";
 
@@ -41,10 +41,11 @@ export const DURATION_TO_ENUM = {
  */
 export function useSetInvestmentStrategy() {
   const { address } = useAccount();
+  const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
 
   const setInvestmentStrategy = useCallback(
-    async (investmentId: string, riskLevel: RiskLevel, durationKey: DurationKey) => {
+    async (_investmentId: string, riskLevel: RiskLevel, durationKey: DurationKey) => {
       if (!address) {
         throw new Error("Wallet not connected");
       }
@@ -63,6 +64,14 @@ export function useSetInvestmentStrategy() {
           args: [riskEnum, durationEnum],
           gas: BigInt(200000), // Strategy update is simple - update 2 state vars
         });
+
+        if (!publicClient) {
+          throw new Error("Public client unavailable");
+        }
+        const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+        if (receipt.status !== "success") {
+          throw new Error("Strategy transaction reverted");
+        }
         
         console.log("Strategy set successfully, txHash:", txHash);
         return txHash;
@@ -72,7 +81,7 @@ export function useSetInvestmentStrategy() {
         throw new Error(errorMsg);
       }
     },
-    [address, writeContractAsync]
+    [address, publicClient, writeContractAsync]
   );
 
   return {

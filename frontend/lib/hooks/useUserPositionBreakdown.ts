@@ -7,7 +7,7 @@ import { formatUSDC } from "@/lib/utils/contractUtils";
  * Get user's position breakdown across Aave, Compound, and Morpho.
  */
 export function useUserPositionBreakdown(userAddress?: string) {
-  const { data, isLoading, error } = useReadContract({
+  const { data, isLoading, error, refetch } = useReadContract({
     address: BASE_SEPOLIA_ADDRESSES.strategyRouter,
     abi: STRATEGY_ROUTER_ABI,
     functionName: "getUserProtocolBalances",
@@ -62,5 +62,6 @@ export function useUserPositionBreakdown(userAddress?: string) {
     morphoPercentage: morphoPercentage.toFixed(1),
     isLoading,
     error,
+    refetch,
   };
 }

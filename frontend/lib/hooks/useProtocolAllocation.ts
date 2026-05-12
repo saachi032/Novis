@@ -1,22 +1,28 @@
-import { useUserVaultShares, useTotalAssets } from "@/lib/hooks/useVaultData";
+import { useUserPositionBreakdown } from "@/lib/hooks/useUserPositionBreakdown";
+import { useAccount } from "wagmi";
 
 /**
  * Get user's allocation across protocols
  * Returns both Aave and Compound allocation percentages
  */
 export function useUserProtocolAllocation() {
-  const { sharesBigInt } = useUserVaultShares();
-  const { totalAssetsBigInt } = useTotalAssets();
-
-  // Default allocation (this will be dynamic based on user strategy in future)
-  const aaveAllocation = 42; // 42% Aave
-  const compoundAllocation = 58; // 58% Compound
+  const { address } = useAccount();
+  const {
+    aavePercentage,
+    compoundPercentage,
+    morphoPercentage,
+    aaveBalanceBigInt,
+    compoundBalanceBigInt,
+    morphoBalanceBigInt,
+  } = useUserPositionBreakdown(address);
 
   return {
-    aaveAllocation,
-    compoundAllocation,
-    totalShares: sharesBigInt || 0n,
-    totalAssets: totalAssetsBigInt || 0n,
+    aaveAllocation: Number(aavePercentage),
+    compoundAllocation: Number(compoundPercentage),
+    morphoAllocation: Number(morphoPercentage),
+    aaveBalance: aaveBalanceBigInt || 0n,
+    compoundBalance: compoundBalanceBigInt || 0n,
+    morphoBalance: morphoBalanceBigInt || 0n,
   };
 }
 
@@ -24,15 +30,14 @@ export function useUserProtocolAllocation() {
  * Get formatted user position across both protocols
  */
 export function useUserProtocolBalance() {
-  const { aaveAllocation, compoundAllocation, totalAssets } =
+  const { aaveBalance, compoundBalance, morphoBalance } =
     useUserProtocolAllocation();
 
-  const aaveBalance = (Number(totalAssets) * aaveAllocation) / 100;
-  const compoundBalance = (Number(totalAssets) * compoundAllocation) / 100;
-
   return {
-    aaveBalance: aaveBalance.toFixed(2),
-    compoundBalance: compoundBalance.toFixed(2),
-    totalBalance: Number(totalAssets).toFixed(2),
+    aaveBalance: (Number(aaveBalance) / 1e6).toFixed(2),
+    compoundBalance: (Number(compoundBalance) / 1e6).toFixed(2),
+    morphoBalance: (Number(morphoBalance) / 1e6).toFixed(2),
+    totalBalance:
+      ((Number(aaveBalance) + Number(compoundBalance) + Number(morphoBalance)) / 1e6).toFixed(2),
   };
 }

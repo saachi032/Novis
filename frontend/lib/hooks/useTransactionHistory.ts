@@ -1,5 +1,10 @@
-import { useCallback, useState, useEffect } from "react";
-import { useAccount } from "wagmi";
+import { useCallback, useEffect, useState } from "react";
+import { useAccount, useChainId, usePublicClient } from "wagmi";
+import { formatUnits } from "viem";
+import { BASE_SEPOLIA_ADDRESSES } from "@/lib/contracts";
+import { VAULT_MANAGER_ABI } from "@/lib/abis/VaultManager";
+import { STRATEGY_ROUTER_ABI } from "@/lib/abis/StrategyRouter";
+import { RISK_REGISTRY_ABI } from "@/lib/abis/RiskRegistry";
 
 export interface Transaction {
   id: string;
@@ -13,8 +18,10 @@ export interface Transaction {
   duration: "daily" | "weekly" | "monthly" | "quarterly" | "halfYearly";
   aaveAmount?: string;
   compoundAmount?: string;
+  morphoAmount?: string;
   aavePercentage?: number;
   compoundPercentage?: number;
+  morphoPercentage?: number;
   note?: string;
   shares?: string;
 }
@@ -35,217 +42,389 @@ export interface Investment {
 
 export interface YieldSnapshot {
   timestamp: number;
-  value: string; // Current total value
-  yield: string; // Yield earned so far
-  apy: string; // Current APY at that time
+  value: string;
+  yield: string;
+  apy: string;
+}
+
+export interface ProtocolAllocationSnapshot {
+  aaveAmount?: string;
+  compoundAmount?: string;
+  morphoAmount?: string;
+  aavePercentage?: number;
+  compoundPercentage?: number;
+  morphoPercentage?: number;
+}
+
+type StrategySnapshot = {
+  timestamp: number;
+  riskLevel: Investment["riskLevel"];
+  duration: Investment["duration"];
+};
+
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+const CHAIN_ID = 84532;
+const USDC_DECIMALS = 6;
+
+function formatUsd(amount: bigint): string {
+  return formatUnits(amount, USDC_DECIMALS);
+}
+
+function mapRiskLevel(riskProfile: number): Investment["riskLevel"] {
+  if (riskProfile === 0) return "conservative";
+  if (riskProfile === 2) return "aggressive";
+  return "balanced";
+}
+
+function mapDuration(checkingDuration: number): Investment["duration"] {
+  const options: Investment["duration"][] = [
+    "daily",
+    "weekly",
+    "monthly",
+    "quarterly",
+    "halfYearly",
+  ];
+  return options[checkingDuration] ?? "weekly";
+}
+
+function protocolLabel(protocol: number): "Aave v3" | "Compound v3" | "Morpho Blue" {
+  if (protocol === 0) return "Aave v3";
+  if (protocol === 1) return "Compound v3";
+  return "Morpho Blue";
+}
+
+function latestStrategyAt(strategies: StrategySnapshot[], timestamp: number): StrategySnapshot {
+  let selected = strategies[0];
+  for (const snap of strategies) {
+    if (snap.timestamp <= timestamp) {
+      selected = snap;
+    } else {
+      break;
+    }
+  }
+  return selected ?? { timestamp, riskLevel: "balanced", duration: "weekly" };
+}
+
+function attachTransaction(
+  investments: Investment[],
+  predicate: (investment: Investment) => boolean,
+  transaction: Transaction,
+  markWithdrawn = false
+) {
+  const index = [...investments].reverse().findIndex(predicate);
+  if (index === -1) return investments;
+  const realIndex = investments.length - 1 - index;
+  const next = [...investments];
+  const target = next[realIndex];
+  next[realIndex] = {
+    ...target,
+    transactions: [...target.transactions, transaction],
+    status: markWithdrawn ? "withdrawn" : target.status,
+    currentValue: markWithdrawn ? "0" : target.currentValue,
+  };
+  return next;
 }
 
 /**
- * Hook to manage transaction and investment history
+ * Hook to manage transaction and investment history from on-chain events.
  */
 export function useTransactionHistory() {
   const { address } = useAccount();
+  const chainId = useChainId();
+  const publicClient = usePublicClient();
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Load from localStorage on mount
-  useEffect(() => {
-    if (!address) {
+  const refreshHistory = useCallback(async () => {
+    if (!address || !publicClient || chainId !== CHAIN_ID) {
       setInvestments([]);
       setIsLoading(false);
       return;
     }
 
+    setIsLoading(true);
+    setError(null);
+
     try {
-      const key = `investments_${address}`;
-      const stored = localStorage.getItem(key);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        // Migrate old transactions with "pending"/"success" status to "active"
-        const migrated = parsed.map((inv: Investment) => ({
-          ...inv,
-          transactions: inv.transactions.map((txn: any) => ({
-            ...txn,
-            // Migrate old "pending"/"success" statuses to new enum
-            status: (txn.status === "pending" || (txn.status as any) === "success") ? "active" : txn.status,
-          })),
-        }));
-        setInvestments(migrated);
+      const [
+        depositLogs,
+        withdrawLogs,
+        investedLogs,
+        redeemedLogs,
+        rebalanceLogs,
+        strategyLogs,
+      ] = await Promise.all([
+        publicClient.getContractEvents({
+          address: BASE_SEPOLIA_ADDRESSES.vaultManager,
+          abi: VAULT_MANAGER_ABI,
+          eventName: "Deposit",
+          args: { owner: address },
+          fromBlock: 0n,
+          toBlock: "latest",
+        }),
+        publicClient.getContractEvents({
+          address: BASE_SEPOLIA_ADDRESSES.vaultManager,
+          abi: VAULT_MANAGER_ABI,
+          eventName: "Withdraw",
+          args: { owner: address },
+          fromBlock: 0n,
+          toBlock: "latest",
+        }),
+        publicClient.getContractEvents({
+          address: BASE_SEPOLIA_ADDRESSES.strategyRouter,
+          abi: STRATEGY_ROUTER_ABI,
+          eventName: "UserFundsInvested",
+          args: { user: address },
+          fromBlock: 0n,
+          toBlock: "latest",
+        }),
+        publicClient.getContractEvents({
+          address: BASE_SEPOLIA_ADDRESSES.strategyRouter,
+          abi: STRATEGY_ROUTER_ABI,
+          eventName: "UserFundsRedeemed",
+          args: { user: address },
+          fromBlock: 0n,
+          toBlock: "latest",
+        }),
+        publicClient.getContractEvents({
+          address: BASE_SEPOLIA_ADDRESSES.strategyRouter,
+          abi: STRATEGY_ROUTER_ABI,
+          eventName: "UserRebalanced",
+          args: { user: address },
+          fromBlock: 0n,
+          toBlock: "latest",
+        }),
+        publicClient.getContractEvents({
+          address: BASE_SEPOLIA_ADDRESSES.riskRegistry,
+          abi: RISK_REGISTRY_ABI,
+          eventName: "StrategySet",
+          args: { user: address },
+          fromBlock: 0n,
+          toBlock: "latest",
+        }),
+      ]);
+
+      const blockTimestampCache = new Map<bigint, number>();
+      const getTimestamp = async (blockNumber: bigint | null | undefined) => {
+        if (blockNumber === null || blockNumber === undefined) return Date.now();
+        const cached = blockTimestampCache.get(blockNumber);
+        if (cached) return cached;
+        const block = await publicClient.getBlock({ blockNumber });
+        const ts = Number(block.timestamp) * 1000;
+        blockTimestampCache.set(blockNumber, ts);
+        return ts;
+      };
+
+      const strategySnapshots: StrategySnapshot[] = await Promise.all(
+        (strategyLogs as any[]).map(async (log) => ({
+          timestamp: await getTimestamp(log.blockNumber),
+          riskLevel: mapRiskLevel(Number(log.args?.riskProfile ?? 1)),
+          duration: mapDuration(Number(log.args?.checkingDuration ?? 1)),
+        }))
+      ).then((snapshots) =>
+        snapshots.sort((a, b) => a.timestamp - b.timestamp)
+      );
+
+      const investedByTx = new Map<string, any>();
+      for (const log of investedLogs as any[]) {
+        investedByTx.set(log.transactionHash, log);
       }
+      const redeemedByTx = new Map<string, any>();
+      for (const log of redeemedLogs as any[]) {
+        redeemedByTx.set(log.transactionHash, log);
+      }
+      const rebalanceByTx = new Map<string, any>();
+      for (const log of rebalanceLogs as any[]) {
+        rebalanceByTx.set(log.transactionHash, log);
+      }
+
+      const depositsSorted = [...(depositLogs as any[])].sort((a, b) => {
+        const aBlock = Number(a.blockNumber ?? 0n);
+        const bBlock = Number(b.blockNumber ?? 0n);
+        if (aBlock !== bBlock) return aBlock - bBlock;
+        return Number(a.logIndex ?? 0n) - Number(b.logIndex ?? 0n);
+      });
+
+      let nextInvestments: Investment[] = [];
+      for (const log of depositsSorted) {
+        const txHash = String(log.transactionHash);
+        const timestamp = await getTimestamp(log.blockNumber);
+        const strategy = latestStrategyAt(strategySnapshots, timestamp);
+        const assets = BigInt(log.args?.assets ?? 0n);
+        const shares = BigInt(log.args?.shares ?? 0n);
+        const invested = investedByTx.get(txHash);
+        const depositTransaction: Transaction = {
+          id: `${txHash}-deposit`,
+          type: "deposit",
+          amount: formatUsd(assets),
+          amountUSD: formatUsd(assets),
+          timestamp,
+          txHash,
+          status: "active",
+          riskLevel: strategy.riskLevel,
+          duration: strategy.duration,
+          shares: formatUsd(shares),
+          aaveAmount: invested ? formatUsd(BigInt(invested.args?.toAave ?? 0n)) : undefined,
+          compoundAmount: invested ? formatUsd(BigInt(invested.args?.toCompound ?? 0n)) : undefined,
+          morphoAmount: invested ? formatUsd(BigInt(invested.args?.toMorpho ?? 0n)) : undefined,
+          aavePercentage: invested ? Number(invested.args?.toAave ?? 0n) / Number(assets || 1n) * 100 : undefined,
+          compoundPercentage: invested ? Number(invested.args?.toCompound ?? 0n) / Number(assets || 1n) * 100 : undefined,
+          morphoPercentage: invested ? Number(invested.args?.toMorpho ?? 0n) / Number(assets || 1n) * 100 : undefined,
+          note: invested ? "On-chain strategy allocation" : "Idle deposit pending allocation",
+        };
+
+        nextInvestments.push({
+          id: txHash,
+          amount: formatUsd(assets),
+          amountUSD: formatUsd(assets),
+          createdAt: timestamp,
+          riskLevel: strategy.riskLevel,
+          duration: strategy.duration,
+          transactions: [depositTransaction],
+          currentValue: formatUsd(assets),
+          yieldEarned: "0",
+          yields: [
+            {
+              timestamp,
+              value: formatUsd(assets),
+              yield: "0",
+              apy: "0",
+            },
+          ],
+          status: "active",
+        });
+      }
+
+      const withdrawSorted = [...(withdrawLogs as any[])].sort((a, b) => {
+        const aBlock = Number(a.blockNumber ?? 0n);
+        const bBlock = Number(b.blockNumber ?? 0n);
+        if (aBlock !== bBlock) return aBlock - bBlock;
+        return Number(a.logIndex ?? 0n) - Number(b.logIndex ?? 0n);
+      });
+
+      for (const log of withdrawSorted) {
+        const timestamp = await getTimestamp(log.blockNumber);
+        const assets = BigInt(log.args?.assets ?? 0n);
+        const shares = BigInt(log.args?.shares ?? 0n);
+        const redeemed = redeemedByTx.get(String(log.transactionHash));
+        const txn: Transaction = {
+          id: `${log.transactionHash}-withdraw`,
+          type: "withdrawal",
+          amount: formatUsd(assets),
+          amountUSD: formatUsd(assets),
+          timestamp,
+          txHash: String(log.transactionHash),
+          status: "active",
+          riskLevel: "balanced",
+          duration: "weekly",
+          shares: formatUsd(shares),
+          aaveAmount: redeemed ? formatUsd(BigInt(redeemed.args?.fromAave ?? 0n)) : undefined,
+          compoundAmount: redeemed ? formatUsd(BigInt(redeemed.args?.fromCompound ?? 0n)) : undefined,
+          morphoAmount: redeemed ? formatUsd(BigInt(redeemed.args?.fromMorpho ?? 0n)) : undefined,
+          note: "On-chain withdrawal from the vault",
+        };
+
+        nextInvestments = attachTransaction(
+          nextInvestments,
+          (investment) => investment.createdAt <= timestamp && investment.status === "active",
+          txn,
+          true
+        );
+      }
+
+      const rebalanceSorted = [...(rebalanceLogs as any[])].sort((a, b) => {
+        const aBlock = Number(a.blockNumber ?? 0n);
+        const bBlock = Number(b.blockNumber ?? 0n);
+        if (aBlock !== bBlock) return aBlock - bBlock;
+        return Number(a.logIndex ?? 0n) - Number(b.logIndex ?? 0n);
+      });
+
+      for (const log of rebalanceSorted) {
+        const timestamp = await getTimestamp(log.blockNumber);
+        const txn: Transaction = {
+          id: `${log.transactionHash}-rebalance`,
+          type: "rebalance",
+          amount: formatUsd(BigInt(log.args?.amount ?? 0n)),
+          amountUSD: formatUsd(BigInt(log.args?.amount ?? 0n)),
+          timestamp,
+          txHash: String(log.transactionHash),
+          status: "active",
+          riskLevel: "balanced",
+          duration: "weekly",
+          note: `On-chain rebalance: ${protocolLabel(Number(log.args?.fromProtocol ?? 0))} -> ${protocolLabel(Number(log.args?.toProtocol ?? 0))}`,
+        };
+
+        nextInvestments = attachTransaction(
+          nextInvestments,
+          (investment) => investment.createdAt <= timestamp && investment.status === "active",
+          txn
+        );
+      }
+
+      const sorted = nextInvestments.sort((a, b) => b.createdAt - a.createdAt);
+      setInvestments(sorted);
     } catch (err) {
-      console.error("Failed to load investment history:", err);
+      console.error("Failed to load on-chain investment history:", err);
+      setError(err instanceof Error ? err.message : "Failed to load on-chain history");
+      setInvestments([]);
     } finally {
       setIsLoading(false);
     }
-  }, [address]);
+  }, [address, chainId, publicClient]);
 
-  // Save to localStorage whenever investments change
-  const saveInvestments = useCallback((newInvestments: Investment[]) => {
-    if (!address) return;
-
-    try {
-      const key = `investments_${address}`;
-      localStorage.setItem(key, JSON.stringify(newInvestments));
-      setInvestments(newInvestments);
-    } catch (err) {
-      console.error("Failed to save investment history:", err);
-    }
-  }, [address]);
+  useEffect(() => {
+    void refreshHistory();
+    const timer = setInterval(() => {
+      void refreshHistory();
+    }, 30000);
+    return () => clearInterval(timer);
+  }, [refreshHistory]);
 
   const addTransaction = useCallback(
-    (
-      amount: string,
-      riskLevel: "conservative" | "balanced" | "aggressive",
-      duration: "daily" | "weekly" | "monthly" | "quarterly" | "halfYearly",
-      txHash: string,
-      type: "deposit" | "withdrawal" | "rebalance" = "deposit"
-    ) => {
-      const investmentId = `inv_${Date.now()}`;
-      // Default allocation: 42% Aave, 58% Compound
-      const amountNum = parseFloat(amount);
-      const aaveAmount = (amountNum * 0.42).toFixed(2);
-      const compoundAmount = (amountNum * 0.58).toFixed(2);
-      
-      const newInvestment: Investment = {
-        id: investmentId,
-        amount,
-        amountUSD: amount, // In production, convert to USD
-        createdAt: Date.now(),
-        riskLevel,
-        duration,
-        transactions: [
-          {
-            id: `txn_${Date.now()}`,
-            type,
-            amount,
-            amountUSD: amount,
-            timestamp: Date.now(),
-            txHash,
-            status: "active",
-            riskLevel,
-            duration,
-            aaveAmount,
-            compoundAmount,
-            aavePercentage: 42,
-            compoundPercentage: 58,
-          },
-        ],
-        currentValue: amount,
-        yieldEarned: "0",
-        yields: [
-          {
-            timestamp: Date.now(),
-            value: amount,
-            yield: "0",
-            apy: "0",
-          },
-        ],
-        status: "active",
-      };
-
-      const updated = [...investments, newInvestment];
-      saveInvestments(updated);
-      return investmentId;
+    async (..._args: unknown[]) => {
+      await refreshHistory();
+      return `chain_${Date.now()}`;
     },
-    [investments, saveInvestments]
+    [refreshHistory]
   );
 
-  const updateTransactionStatus = useCallback(
-    (investmentId: string, txHash: string, status: "pending" | "active" | "failed") => {
-      const updated = investments.map((inv) => {
-        if (inv.id === investmentId) {
-          return {
-            ...inv,
-            transactions: inv.transactions.map((txn) =>
-              txn.txHash === txHash ? { ...txn, status } : txn
-            ),
-            status: status === "failed" ? "failed" : inv.status,
-          };
-        }
-        return inv;
-      });
-      saveInvestments(updated);
-    },
-    [investments, saveInvestments]
-  );
+  const updateTransactionStatus = useCallback((..._args: unknown[]) => {
+    void refreshHistory();
+  }, [refreshHistory]);
 
-  // Update the most recent transaction's hash and status (useful when hash wasn't known at creation time)
-  const updateLatestTransactionHashAndStatus = useCallback(
-    (investmentId: string, newHash: string, status: "pending" | "active" | "failed") => {
-      const updated = investments.map((inv) => {
-        if (inv.id === investmentId) {
-          const updatedTransactions = [...inv.transactions];
-          if (updatedTransactions.length > 0) {
-            const lastTxn = updatedTransactions[updatedTransactions.length - 1];
-            // Check if this transaction is still pending/placeholder and waiting for a real hash
-            if ((lastTxn.status === "pending" && lastTxn.txHash.startsWith("pending_")) || newHash === "failed") {
-              updatedTransactions[updatedTransactions.length - 1] = {
-                ...lastTxn,
-                txHash: newHash,
-                status,
-              };
-            }
-          }
-          return {
-            ...inv,
-            transactions: updatedTransactions,
-            status: status === "failed" ? "failed" : inv.status,
-          };
-        }
-        return inv;
-      });
-      saveInvestments(updated);
-    },
-    [investments, saveInvestments]
-  );
+  const updateLatestTransactionHashAndStatus = useCallback((..._args: unknown[]) => {
+    void refreshHistory();
+  }, [refreshHistory]);
 
-  const addYieldSnapshot = useCallback(
-    (investmentId: string, value: string, yield_: string, apy: string) => {
-      const updated = investments.map((inv) => {
-        if (inv.id === investmentId) {
-          return {
-            ...inv,
-            currentValue: value,
-            yieldEarned: yield_,
-            yields: [
-              ...inv.yields,
-              {
-                timestamp: Date.now(),
-                value,
-                yield: yield_,
-                apy,
-              },
-            ],
-          };
-        }
-        return inv;
-      });
-      saveInvestments(updated);
-    },
-    [investments, saveInvestments]
-  );
+  const addYieldSnapshot = useCallback((..._args: unknown[]) => {
+    void refreshHistory();
+  }, [refreshHistory]);
 
   const getInvestmentById = useCallback(
-    (id: string): Investment | undefined => {
-      return investments.find((inv) => inv.id === id);
-    },
+    (id: string): Investment | undefined => investments.find((inv) => inv.id === id),
     [investments]
   );
 
-  const getActiveInvestments = useCallback(() => {
-    return investments.filter((inv) => inv.status === "active");
-  }, [investments]);
+  const getActiveInvestments = useCallback(
+    () => investments.filter((inv) => inv.status === "active"),
+    [investments]
+  );
 
-  const getTotalYield = useCallback(() => {
-    return investments
-      .filter((inv) => inv.status === "active")
-      .reduce((sum, inv) => sum + parseFloat(inv.yieldEarned || "0"), 0)
-      .toFixed(2);
-  }, [investments]);
+  const getTotalYield = useCallback(
+    () =>
+      investments
+        .filter((inv) => inv.status === "active")
+        .reduce((sum, inv) => sum + parseFloat(inv.yieldEarned || "0"), 0)
+        .toFixed(2),
+    [investments]
+  );
 
   return {
     investments,
     isLoading,
+    error,
+    refreshHistory,
     addTransaction,
     updateTransactionStatus,
     updateLatestTransactionHashAndStatus,

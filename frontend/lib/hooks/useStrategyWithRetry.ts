@@ -2,8 +2,8 @@ import { useCallback } from "react";
 import { useSetInvestmentStrategy, type RiskLevel, type DurationKey } from "./useInvestmentStrategy";
 
 /**
- * Wrapper hook for setStrategy with automatic retry logic
- * Handles all errors gracefully - never blocks deposits
+ * Wrapper hook for setStrategy with automatic retry logic.
+ * Callers can decide whether a deposit should continue when strategy setup fails.
  */
 export function useStrategyWithRetry() {
   const { setInvestmentStrategy: baseSetStrategy } = useSetInvestmentStrategy();
@@ -53,9 +53,9 @@ export function useStrategyWithRetry() {
         }
       }
 
-      // Log final error but don't throw - let deposit succeed anyway
+      // Log final error but don't throw; callers decide whether to continue.
       console.warn(
-        "⚠️  Strategy setting failed (deposit still succeeded):",
+        "⚠️  Strategy setting failed:",
         lastError?.message
       );
       

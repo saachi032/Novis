@@ -1,5 +1,40 @@
 export const STRATEGY_ROUTER_ABI = [
   {
+    type: 'event',
+    name: 'UserFundsInvested',
+    inputs: [
+      { name: 'user', type: 'address', indexed: true },
+      { name: 'amount', type: 'uint256', indexed: false },
+      { name: 'toAave', type: 'uint256', indexed: false },
+      { name: 'toCompound', type: 'uint256', indexed: false },
+      { name: 'toMorpho', type: 'uint256', indexed: false },
+    ],
+    anonymous: false,
+  },
+  {
+    type: 'event',
+    name: 'UserFundsRedeemed',
+    inputs: [
+      { name: 'user', type: 'address', indexed: true },
+      { name: 'amount', type: 'uint256', indexed: false },
+      { name: 'fromAave', type: 'uint256', indexed: false },
+      { name: 'fromCompound', type: 'uint256', indexed: false },
+      { name: 'fromMorpho', type: 'uint256', indexed: false },
+    ],
+    anonymous: false,
+  },
+  {
+    type: 'event',
+    name: 'UserRebalanced',
+    inputs: [
+      { name: 'user', type: 'address', indexed: true },
+      { name: 'fromProtocol', type: 'uint8', indexed: false },
+      { name: 'toProtocol', type: 'uint8', indexed: false },
+      { name: 'amount', type: 'uint256', indexed: false },
+    ],
+    anonymous: false,
+  },
+  {
     type: 'function',
     name: 'getCurrentAPYs',
     stateMutability: 'view',

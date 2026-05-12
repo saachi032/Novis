@@ -18,12 +18,12 @@
     "swapRouter": "0x5969f3cfc1ffdfa22c779807aaf32033603f8be7"
   },
   "notes": {
-    "status": "✅ PRODUCTION READY - USDC ONLY, FULLY WORKING",
-    "vaultManagerVersion": "16 (USDC only, no strategy requirement)",
-    "depositFlow": "USDC deposits work perfectly with deposit() and depositAnyStablecoin()",
-    "testResults": "15 USDC deposit successful on-chain",
-    "stablecoins": "USDC only (other stablecoins removed)",
-    "lastTested": "2026-04-12 - USDC deposit working end-to-end",
-    "knownIssues": "None confirmed"
+    "status": "USDC-first deployment snapshot",
+    "vaultManagerVersion": "Current source expects strategy-first USDC deposits",
+    "depositFlow": "USDC deposits use deposit() and invest when a strategy exists",
+    "testResults": "Verify with the current codebase before mainnet use",
+    "stablecoins": "USDC only in the live flow",
+    "lastTested": "2026-05-12",
+    "knownIssues": "USDT/DAI zapper is not live in the current deployment flow"
   }
 }

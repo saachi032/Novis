@@ -1,5 +1,28 @@
 export const VAULT_MANAGER_ABI = [
   {
+    type: 'event',
+    name: 'Deposit',
+    inputs: [
+      { name: 'caller', type: 'address', indexed: true },
+      { name: 'owner', type: 'address', indexed: true },
+      { name: 'assets', type: 'uint256', indexed: false },
+      { name: 'shares', type: 'uint256', indexed: false },
+    ],
+    anonymous: false,
+  },
+  {
+    type: 'event',
+    name: 'Withdraw',
+    inputs: [
+      { name: 'caller', type: 'address', indexed: true },
+      { name: 'receiver', type: 'address', indexed: true },
+      { name: 'owner', type: 'address', indexed: true },
+      { name: 'assets', type: 'uint256', indexed: false },
+      { name: 'shares', type: 'uint256', indexed: false },
+    ],
+    anonymous: false,
+  },
+  {
     type: 'function',
     name: 'deposit',
     stateMutability: 'nonpayable',

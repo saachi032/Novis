@@ -17,10 +17,9 @@ export default function BuyPage() {
                         Deposit stablecoins
                     </h1>
                     <p className="mx-auto mt-4 max-w-md text-center text-sm leading-relaxed text-neutral-600">
-                        Deposit USDC, USDT, or DAI into the vault to mint shares (USDT/DAI are
-                        swapped to USDC on-chain when the zapper is enabled). Funds are
-                        allocated across Aave v3 and Compound v3 for optimized yield—the same
-                        blended APY applies in USD terms after conversion.
+                        Deposit USDC into the vault to mint shares. The current deployment is
+                        USDC-only, so the live flow is simpler and easier to verify. Funds are
+                        allocated across the supported strategy path and shown in USD terms.
                     </p>
                     <div className="mx-auto mt-8 max-w-xl">
                         <StablecoinBalancesStrip selectOnClick />

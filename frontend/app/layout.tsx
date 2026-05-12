@@ -1,26 +1,24 @@
 import type { Metadata } from "next";
-import { Inter, Work_Sans } from "next/font/google";
+import localFont from "next/font/local";
 import { Providers } from "@/components/providers";
 import "./globals.css";
 
-const inter = Inter({
-  subsets: ["latin"],
+const geistDisplay = localFont({
+  src: "./fonts/GeistVF.woff",
   variable: "--font-display",
-  weight: ["600", "700", "800", "900"],
   display: "swap",
 });
 
-const workSans = Work_Sans({
-  subsets: ["latin"],
+const geistBody = localFont({
+  src: "./fonts/GeistVF.woff",
   variable: "--font-body",
-  weight: ["400", "500", "600"],
   display: "swap",
 });
 
 export const metadata: Metadata = {
   title: "Novis",
   description:
-    "Automated on-chain stablecoin yield on Base (USDC, USDT, DAI). Allocates across Aave v3 and Compound v3 with gas-aware rebalancing.",
+    "Automated on-chain stablecoin yield on Base Sepolia with USDC deposits, strategy routing, and gas-aware rebalancing.",
 };
 
 export default function RootLayout({
@@ -38,7 +36,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${inter.variable} ${workSans.variable} min-h-screen bg-brand-bg font-body antialiased text-brand-black transition-colors duration-200 dark:bg-[#1a1f1e] dark:text-neutral-100`}
+        className={`${geistDisplay.variable} ${geistBody.variable} min-h-screen bg-brand-bg font-body antialiased text-brand-black transition-colors duration-200 dark:bg-[#1a1f1e] dark:text-neutral-100`}
         suppressHydrationWarning
       >
         <Providers>{children}</Providers>

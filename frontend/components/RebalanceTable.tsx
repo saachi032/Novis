@@ -4,7 +4,6 @@ import { useAccount } from "wagmi";
 import { useForceRebalance } from "@/lib/hooks/useForceRebalance";
 import { useUserPositionBreakdown } from "@/lib/hooks/useUserPositionBreakdown";
 import { useRebalanceHistory } from "@/lib/hooks/useRebalanceHistory";
-import { useUserStrategy } from "@/lib/hooks/useRiskRegistry";
 import { useState } from "react";
 import { useHydrated } from "@/lib/hooks/useHydrated";
 
@@ -21,93 +20,15 @@ export function RebalanceTable() {
     morphoPercentage,
     total,
   } = useUserPositionBreakdown(hydrated ? address : undefined);
-  const { history, addRebalanceEntry } = useRebalanceHistory();
-  const { riskLevel } = useUserStrategy(hydrated ? address : undefined);
+  const { history, refreshHistory } = useRebalanceHistory();
   const [showSuccess, setShowSuccess] = useState(false);
 
   const handleForceRebalance = async () => {
     try {
       console.log("Starting force rebalance...");
       await forceRebalance();
-      console.log("Rebalance completed, adding to history...");
-      
-      // Determine which direction to rebalance based on current position
-      const aaveNum = parseFloat(aaveBalance || "0");
-      const compoundNum = parseFloat(compoundBalance || "0");
-      const morphoNum = parseFloat(morphoBalance || "0");
-      const totalNum = parseFloat(total || "0");
-      const aavePercent = parseFloat(String(aavePercentage || 0));
-      const compoundPercent = parseFloat(String(compoundPercentage || 0));
-      const morphoPercent = parseFloat(String(morphoPercentage || 0));
-
-      console.log("Position breakdown:", {
-        aaveNum,
-        compoundNum,
-        morphoNum,
-        totalNum,
-        aavePercent,
-        compoundPercent,
-        morphoPercent,
-        riskLevel,
-      });
-
-      if (totalNum > 0) {
-        type P = "Aave v3" | "Compound v3" | "Morpho Blue";
-        let from: P;
-        let to: P;
-        let rebalanceAmount: string;
-        let reason: string;
-
-        const maxPct = Math.max(aavePercent, compoundPercent, morphoPercent);
-        const minPct = Math.min(aavePercent, compoundPercent, morphoPercent);
-        const fromProtocol = (): P => {
-          if (aavePercent === maxPct) return "Aave v3";
-          if (compoundPercent === maxPct) return "Compound v3";
-          return "Morpho Blue";
-        };
-        const toProtocol = (): P => {
-          if (aavePercent === minPct) return "Aave v3";
-          if (compoundPercent === minPct) return "Compound v3";
-          return "Morpho Blue";
-        };
-
-        if (riskLevel === "aggressive") {
-          if (maxPct > 80) {
-            from = fromProtocol();
-            to = toProtocol();
-            if (from === to) {
-              from = "Aave v3";
-              to = "Morpho Blue";
-            }
-            rebalanceAmount = `$${(totalNum * 0.2).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-            reason = "Rebalance aggressive allocation across Aave, Compound, and Morpho";
-          } else {
-            from = fromProtocol();
-            to = toProtocol();
-            if (from === to) {
-              from = "Compound v3";
-              to = "Morpho Blue";
-            }
-            rebalanceAmount = `$${(totalNum * 0.2).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-            reason = "Manual rebalance triggered - optimizing allocation";
-          }
-        } else {
-          from = fromProtocol();
-          to = toProtocol();
-          if (from === to) {
-            from = "Aave v3";
-            to = "Compound v3";
-          }
-          rebalanceAmount = `$${(totalNum * 0.15).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-          reason = "Periodic rebalance - maintaining target allocation";
-        }
-
-        console.log("Adding entry:", { from, to, rebalanceAmount, reason });
-        // Add entry to rebalance history
-        addRebalanceEntry(from, to, rebalanceAmount, reason);
-      } else {
-        console.log("Total position is 0, not adding rebalance entry");
-      }
+      console.log("Rebalance completed, refreshing on-chain history...");
+      await refreshHistory();
 
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 5000);

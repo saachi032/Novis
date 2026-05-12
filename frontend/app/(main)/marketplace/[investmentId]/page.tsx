@@ -1,14 +1,7 @@
-import { notFound } from "next/navigation";
 import { InvestmentDetailPageContent } from "@/components/marketplace/InvestmentDetailPageContent";
-import {
-  getMockInvestmentById,
-  MOCK_INVESTMENTS,
-} from "@/components/marketplace/mockInvestments";
 
 export function generateStaticParams() {
-  return MOCK_INVESTMENTS.map((investment) => ({
-    investmentId: investment.id,
-  }));
+  return [{ investmentId: "vault-usdc" }];
 }
 
 export default function MarketplaceInvestmentPage({
@@ -16,11 +9,9 @@ export default function MarketplaceInvestmentPage({
 }: {
   params: { investmentId: string };
 }) {
-  const investment = getMockInvestmentById(params.investmentId);
-
-  if (!investment) {
-    notFound();
+  if (params.investmentId !== "vault-usdc") {
+    return <InvestmentDetailPageContent investmentId={params.investmentId} />;
   }
 
-  return <InvestmentDetailPageContent investment={investment} />;
+  return <InvestmentDetailPageContent investmentId={params.investmentId} />;
 }

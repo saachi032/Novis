@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useAccount, useChainId } from "wagmi";
-import { useUserVaultShares, useVaultAPYs } from "@/lib/hooks/useVaultData";
+import { useVaultAPYs } from "@/lib/hooks/useVaultData";
+import { useUserPositionBreakdown } from "@/lib/hooks/useUserPositionBreakdown";
 import { useDeposit } from "@/lib/hooks/useDepositWithdraw";
 import { useStrategyWithRetry } from "@/lib/hooks/useStrategyWithRetry";
 import type { RiskLevel, DurationKey } from "@/lib/hooks/useInvestmentStrategy";
@@ -32,17 +33,15 @@ export function DepositPanel() {
   const hydrated = useHydrated();
   const chainId = useChainId();
   const { address, isConnected } = useAccount();
-  const { shares } = useUserVaultShares(address);
   const { blendedAPY } = useVaultAPYs();
+  const { refetch: refetchPositionBreakdown } = useUserPositionBreakdown(address);
   const {
     depositIntoVault,
     isLoading: depositLoading,
-    hash,
     step,
-    zapperStatus,
   } = useDeposit();
   const { setInvestmentStrategy } = useStrategyWithRetry();
-  const { addTransaction, updateLatestTransactionHashAndStatus } = useTransactionHistory();
+  const { refreshHistory } = useTransactionHistory();
 
   const [depositAmount, setDepositAmount] = useState("");
   const { selectedAsset, setSelectedAsset } = useStablecoinPreference();
@@ -50,31 +49,18 @@ export function DepositPanel() {
   const [duration, setDuration] = useState<DurationKey>("weekly");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [currentInvestmentId, setCurrentInvestmentId] = useState<string | null>(null);
-  const [depositHash, setDepositHash] = useState<string | null>(null);
 
   const allOptions = getStablecoinOptions(chainId);
   const assetOptions = useMemo(() => {
     if (!allOptions) return [];
-    if (zapperStatus === "on") return allOptions;
     return allOptions.filter((o) => o.id === "USDC");
-  }, [allOptions, zapperStatus]);
+  }, [allOptions]);
 
   useEffect(() => {
-    if (zapperStatus !== "on" && selectedAsset !== "USDC") {
+    if (selectedAsset !== "USDC") {
       setSelectedAsset("USDC");
     }
-  }, [zapperStatus, selectedAsset]);
-
-  // Track transaction status changes when hash arrives
-  useEffect(() => {
-    if (currentInvestmentId && depositHash) {
-      console.log(`Updating transaction with real hash: ${depositHash}`);
-      updateLatestTransactionHashAndStatus(currentInvestmentId, depositHash, "active");
-      setCurrentInvestmentId(null);
-      setDepositHash(null);
-    }
-  }, [depositHash, currentInvestmentId, updateLatestTransactionHashAndStatus]);
+  }, [selectedAsset, setSelectedAsset]);
 
   const handleDepositAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -104,46 +90,30 @@ export function DepositPanel() {
         return;
       }
 
-      // STEP 1: Deposit to vault (USDC or zapper)
+      // STEP 1: Set the on-chain strategy first so the vault can invest immediately.
+      console.log("Setting strategy on-chain...");
+      const investmentId = `vault_${Date.now()}`;
+      const strategyTxHash = await setInvestmentStrategy(investmentId, risk, duration);
+
+      if (!strategyTxHash) {
+        setError("Strategy setup did not complete. Deposit was cancelled so funds stay safe.");
+        return;
+      }
+
+      // STEP 2: Deposit to vault (USDC only in the current deployment)
       console.log("Starting deposit...");
-      const actualTxHash = await depositIntoVault(depositAmount, selectedAsset);
-      
-      // Record the transaction in history with the actual hash
-      const invId = addTransaction(depositAmount, risk, duration, actualTxHash, "deposit");
-      setCurrentInvestmentId(invId);
-      setDepositHash(actualTxHash);
+      const actualTxHash = await depositIntoVault(depositAmount, "USDC");
+      await refetchPositionBreakdown?.();
+      await refreshHistory();
 
       // Deposit succeeded!
       setSuccess(
-        `Deposit of ${depositAmount} ${selectedAsset} completed! Funds in vault.`
+        `Deposit of ${depositAmount} USDC completed! Transaction ${actualTxHash.slice(0, 10)}... is now reflected from chain state.`
       );
       setDepositAmount("");
-
-      // STEP 2: Set investment strategy (OPTIONAL - happens in background)
-      // This is separate and won't block the user's deposit success
-      console.log("Setting strategy in background...");
-      const investmentId = `vault_${Date.now()}`;
-      
-      // Fire and forget - don't await, don't block UI
-      setInvestmentStrategy(investmentId, risk, duration)
-        .then(() => {
-          console.log("Strategy set successfully");
-          setSuccess(
-            `Deposit complete! Risk: ${risk} • Checks: ${duration}`
-          );
-        })
-        .catch((err) => {
-          // Strategy failed, but deposit succeeded - that's OK
-          console.warn("Strategy setting encountered an issue:", err);
-          // Don't show error to user - deposit is safe
-        });
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Deposit failed";
       console.error("Deposit error:", errorMsg);
-
-      // Record failed transaction with error marker
-      const invId = addTransaction(depositAmount, risk, duration, "failed", "deposit");
-      updateLatestTransactionHashAndStatus(invId, "failed", "failed");
 
       if (errorMsg.includes("allowance")) {
         setError(
@@ -206,12 +176,10 @@ export function DepositPanel() {
         Earn {blendedAPY}% APY through Aave & Compound
       </p>
 
-      {zapperStatus === "off" && (
-        <p className="mt-2 text-xs text-neutral-500">
-          USDT and DAI require the on-chain zapper (swap router). This deployment
-          accepts USDC only.
-        </p>
-      )}
+      <p className="mt-2 text-xs text-neutral-500">
+        This deployment is USDC-only. USDT and DAI are documented as planned
+        support, but they are not part of the live deposit flow yet.
+      </p>
 
       {!allOptions && (
         <p className="mt-4 text-sm text-amber-800">
@@ -234,7 +202,6 @@ export function DepositPanel() {
               !allOptions ||
               assetOptions.length === 0 ||
               depositLoading ||
-              zapperStatus === "loading" ||
               (hydrated && !isConnected)
             }
             className="mt-2 w-full rounded-lg border border-brand-gray/60 bg-white px-4 py-3 text-sm font-semibold text-brand-black focus:border-brand-green focus:outline-none focus:ring-1 focus:ring-brand-green disabled:bg-neutral-100"
@@ -273,7 +240,6 @@ export function DepositPanel() {
             <p className="mt-2 text-xs text-neutral-500" aria-live="polite">
               {step === "approving" && "Step 1/2: confirm token approval in your wallet…"}
               {step === "depositing" && "Step 2/2: confirming USDC deposit…"}
-              {step === "zapping" && "Step 2/2: swap to USDC and deposit (one transaction)…"}
             </p>
           )}
         </div>

@@ -34,7 +34,19 @@ function RainbowKitThemed({ children }: { children: ReactNode }) {
 }
 
 export function Providers({ children }: { children: ReactNode }) {
-  const [queryClient] = useState(() => new QueryClient());
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            retry: false,
+            refetchOnWindowFocus: false,
+            refetchOnReconnect: false,
+            staleTime: 30_000,
+          },
+        },
+      })
+  );
 
   return (
     <WagmiProvider config={wagmiConfig}>

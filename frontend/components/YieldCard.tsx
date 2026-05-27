@@ -2,61 +2,46 @@
 
 import { useAccount, useReadContracts } from "wagmi";
 import { formatUnits } from "viem";
-import { useEffect, useState } from "react";
-import { vaultABI, strategyABI } from "@/lib/contracts";
-
-const VAULT_ADDRESS = process.env.NEXT_PUBLIC_VAULT_ADDRESS as `0x${string}`;
-const STRATEGY_ADDRESS = process.env.NEXT_PUBLIC_STRATEGY_ADDRESS as `0x${string}`;
+import { useState } from "react";
+import { BASE_SEPOLIA_ADDRESSES, vaultABI, strategyABI } from "@/lib/contracts";
 
 export function YieldCard() {
     const { address, isConnected } = useAccount();
-    const [depositedUSDC, setDepositedUSDC] = useState<number>(0);
-    const [hasDeposit, setHasDeposit] = useState(false);
-
-    useEffect(() => {
-        if (address) {
-            const stored = localStorage.getItem(`deposit_${address}`);
-            if (stored) {
-                setDepositedUSDC(Number(stored) / 1e6);
-                setHasDeposit(true);
-            } else {
-                setDepositedUSDC(0);
-                setHasDeposit(false);
-            }
-        }
-    }, [address]);
+    const [depositedUSDC] = useState<number>(0);
+    const hasDeposit = !!address;
 
     const { data, isError, isLoading } = useReadContracts({
         contracts: [
             {
-                address: VAULT_ADDRESS,
+                address: BASE_SEPOLIA_ADDRESSES.vaultManager,
                 abi: vaultABI,
                 functionName: "balanceOf",
                 args: [address ?? "0x0000000000000000000000000000000000000000"],
             },
             {
-                address: VAULT_ADDRESS,
+                address: BASE_SEPOLIA_ADDRESSES.vaultManager,
                 abi: vaultABI,
                 functionName: "totalSupply",
             },
             {
-                address: VAULT_ADDRESS,
+                address: BASE_SEPOLIA_ADDRESSES.vaultManager,
                 abi: vaultABI,
                 functionName: "totalAssets",
             },
             {
-                address: STRATEGY_ADDRESS,
+                address: BASE_SEPOLIA_ADDRESSES.strategyRouter,
                 abi: strategyABI,
                 functionName: "getCurrentBlendedAPY",
             },
             {
-                address: STRATEGY_ADDRESS,
+                address: BASE_SEPOLIA_ADDRESSES.strategyRouter,
                 abi: strategyABI,
                 functionName: "getAllocation",
             },
         ],
         query: {
-            refetchInterval: 5000,
+            refetchInterval: 60_000,
+            retry: false,
         },
     });
 

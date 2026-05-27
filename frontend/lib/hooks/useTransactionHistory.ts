@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAccount, useChainId, usePublicClient } from "wagmi";
 import { formatUnits } from "viem";
-import { BASE_SEPOLIA_ADDRESSES } from "@/lib/contracts";
+import { BASE_SEPOLIA_ADDRESSES, DEPLOYMENT_BLOCK } from "@/lib/contracts";
 import { VAULT_MANAGER_ABI } from "@/lib/abis/VaultManager";
 import { STRATEGY_ROUTER_ABI } from "@/lib/abis/StrategyRouter";
 import { RISK_REGISTRY_ABI } from "@/lib/abis/RiskRegistry";
+import { getContractEventsInChunks } from "@/lib/utils/chainEvents";
 
 export interface Transaction {
   id: string;
@@ -65,6 +66,8 @@ type StrategySnapshot = {
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const CHAIN_ID = 84532;
 const USDC_DECIMALS = 6;
+const historyCache = new Map<string, { timestamp: number; investments: Investment[] }>();
+const HISTORY_CACHE_TTL_MS = 600_000;
 
 function formatUsd(amount: bigint): string {
   return formatUnits(amount, USDC_DECIMALS);
@@ -137,9 +140,20 @@ export function useTransactionHistory() {
   const [error, setError] = useState<string | null>(null);
 
   const refreshHistory = useCallback(async () => {
-    if (!address || !publicClient || chainId !== CHAIN_ID) {
+    if (!publicClient || chainId !== CHAIN_ID) {
       setInvestments([]);
       setIsLoading(false);
+      return;
+    }
+
+    const cacheKey = address
+      ? `${chainId}:${address.toLowerCase()}`
+      : `${chainId}:all`;
+    const cached = historyCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < HISTORY_CACHE_TTL_MS) {
+      setInvestments(cached.investments);
+      setIsLoading(false);
+      setError(null);
       return;
     }
 
@@ -155,53 +169,53 @@ export function useTransactionHistory() {
         rebalanceLogs,
         strategyLogs,
       ] = await Promise.all([
-        publicClient.getContractEvents({
+        getContractEventsInChunks({
+          publicClient,
           address: BASE_SEPOLIA_ADDRESSES.vaultManager,
           abi: VAULT_MANAGER_ABI,
           eventName: "Deposit",
-          args: { owner: address },
-          fromBlock: 0n,
-          toBlock: "latest",
+          args: address ? { owner: address } : undefined,
+          fromBlock: DEPLOYMENT_BLOCK,
         }),
-        publicClient.getContractEvents({
+        getContractEventsInChunks({
+          publicClient,
           address: BASE_SEPOLIA_ADDRESSES.vaultManager,
           abi: VAULT_MANAGER_ABI,
           eventName: "Withdraw",
-          args: { owner: address },
-          fromBlock: 0n,
-          toBlock: "latest",
+          args: address ? { owner: address } : undefined,
+          fromBlock: DEPLOYMENT_BLOCK,
         }),
-        publicClient.getContractEvents({
+        getContractEventsInChunks({
+          publicClient,
           address: BASE_SEPOLIA_ADDRESSES.strategyRouter,
           abi: STRATEGY_ROUTER_ABI,
           eventName: "UserFundsInvested",
-          args: { user: address },
-          fromBlock: 0n,
-          toBlock: "latest",
+          args: address ? { user: address } : undefined,
+          fromBlock: DEPLOYMENT_BLOCK,
         }),
-        publicClient.getContractEvents({
+        getContractEventsInChunks({
+          publicClient,
           address: BASE_SEPOLIA_ADDRESSES.strategyRouter,
           abi: STRATEGY_ROUTER_ABI,
           eventName: "UserFundsRedeemed",
-          args: { user: address },
-          fromBlock: 0n,
-          toBlock: "latest",
+          args: address ? { user: address } : undefined,
+          fromBlock: DEPLOYMENT_BLOCK,
         }),
-        publicClient.getContractEvents({
+        getContractEventsInChunks({
+          publicClient,
           address: BASE_SEPOLIA_ADDRESSES.strategyRouter,
           abi: STRATEGY_ROUTER_ABI,
           eventName: "UserRebalanced",
-          args: { user: address },
-          fromBlock: 0n,
-          toBlock: "latest",
+          args: address ? { user: address } : undefined,
+          fromBlock: DEPLOYMENT_BLOCK,
         }),
-        publicClient.getContractEvents({
+        getContractEventsInChunks({
+          publicClient,
           address: BASE_SEPOLIA_ADDRESSES.riskRegistry,
           abi: RISK_REGISTRY_ABI,
           eventName: "StrategySet",
-          args: { user: address },
-          fromBlock: 0n,
-          toBlock: "latest",
+          args: address ? { user: address } : undefined,
+          fromBlock: DEPLOYMENT_BLOCK,
         }),
       ]);
 
@@ -363,23 +377,32 @@ export function useTransactionHistory() {
       }
 
       const sorted = nextInvestments.sort((a, b) => b.createdAt - a.createdAt);
+      historyCache.set(cacheKey, { timestamp: Date.now(), investments: sorted });
       setInvestments(sorted);
     } catch (err) {
       console.error("Failed to load on-chain investment history:", err);
-      setError(err instanceof Error ? err.message : "Failed to load on-chain history");
-      setInvestments([]);
+      if (!cached) {
+        setError(err instanceof Error ? err.message : "Failed to load on-chain history");
+        setInvestments([]);
+      } else {
+        setInvestments(cached.investments);
+        setError(null);
+      }
     } finally {
       setIsLoading(false);
     }
   }, [address, chainId, publicClient]);
 
+  // Only load once on mount — refreshHistory is stable due to caching
   useEffect(() => {
-    void refreshHistory();
-    const timer = setInterval(() => {
-      void refreshHistory();
-    }, 30000);
-    return () => clearInterval(timer);
-  }, [refreshHistory]);
+    let cancelled = false;
+    const load = async () => {
+      if (!cancelled) await refreshHistory();
+    };
+    void load();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const addTransaction = useCallback(
     async (..._args: unknown[]) => {

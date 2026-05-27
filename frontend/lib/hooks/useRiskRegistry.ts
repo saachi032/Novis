@@ -35,7 +35,8 @@ export function useUserStrategy(address?: string) {
     args: address ? [address as `0x${string}`] : undefined,
     query: {
       enabled: !!address,
-      refetchInterval: 10000,
+      staleTime: 60_000,
+      refetchInterval: 120_000,
     },
   });
 
@@ -140,7 +141,8 @@ export function useCanRebalance(address?: string) {
     args: address ? [address as `0x${string}`] : undefined,
     query: {
       enabled: !!address,
-      refetchInterval: 5000,
+      staleTime: 60_000,
+      refetchInterval: 120_000,
     },
   });
 

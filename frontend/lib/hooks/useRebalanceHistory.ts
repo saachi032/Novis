@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAccount, useChainId, usePublicClient } from "wagmi";
 import { formatUnits } from "viem";
-import { BASE_SEPOLIA_ADDRESSES } from "@/lib/contracts";
+import { BASE_SEPOLIA_ADDRESSES, DEPLOYMENT_BLOCK } from "@/lib/contracts";
 import { STRATEGY_ROUTER_ABI } from "@/lib/abis/StrategyRouter";
+import { getContractEventsInChunks } from "@/lib/utils/chainEvents";
 
 export type RebalanceProtocolLabel = "Aave v3" | "Compound v3" | "Morpho Blue";
 
@@ -17,6 +18,8 @@ export interface RebalanceEntry {
 }
 
 const CHAIN_ID = 84532;
+const historyCache = new Map<string, { timestamp: number; history: RebalanceEntry[] }>();
+const HISTORY_CACHE_TTL_MS = 600_000;
 
 function protocolLabel(protocol: number): RebalanceProtocolLabel {
   if (protocol === 0) return "Aave v3";
@@ -49,8 +52,18 @@ export function useRebalanceHistory() {
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshHistory = useCallback(async () => {
-    if (!address || !publicClient || chainId !== CHAIN_ID) {
+    if (!publicClient || chainId !== CHAIN_ID) {
       setHistory([]);
+      setIsLoading(false);
+      return;
+    }
+
+    const cacheKey = address
+      ? `${chainId}:${address.toLowerCase()}`
+      : `${chainId}:all`;
+    const cached = historyCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < HISTORY_CACHE_TTL_MS) {
+      setHistory(cached.history);
       setIsLoading(false);
       return;
     }
@@ -58,13 +71,13 @@ export function useRebalanceHistory() {
     setIsLoading(true);
 
     try {
-      const logs = await publicClient.getContractEvents({
+      const logs = await getContractEventsInChunks({
+        publicClient,
         address: BASE_SEPOLIA_ADDRESSES.strategyRouter,
         abi: STRATEGY_ROUTER_ABI,
         eventName: "UserRebalanced",
-        args: { user: address },
-        fromBlock: 0n,
-        toBlock: "latest",
+        args: address ? { user: address } : undefined,
+        fromBlock: DEPLOYMENT_BLOCK,
       });
 
       const blockTimestampCache = new Map<bigint, number>();
@@ -95,22 +108,30 @@ export function useRebalanceHistory() {
       );
 
       entries.sort((a, b) => b.timestamp - a.timestamp);
+      historyCache.set(cacheKey, { timestamp: Date.now(), history: entries });
       setHistory(entries);
     } catch (err) {
       console.error("Failed to load on-chain rebalance history:", err);
-      setHistory([]);
+      if (!cached) {
+        setHistory([]);
+      } else {
+        setHistory(cached.history);
+      }
     } finally {
       setIsLoading(false);
     }
   }, [address, chainId, publicClient]);
 
+  // Only load once on mount — refreshHistory is stable due to caching
   useEffect(() => {
-    void refreshHistory();
-    const timer = setInterval(() => {
-      void refreshHistory();
-    }, 30000);
-    return () => clearInterval(timer);
-  }, [refreshHistory]);
+    let cancelled = false;
+    const load = async () => {
+      if (!cancelled) await refreshHistory();
+    };
+    void load();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const addRebalanceEntry = useCallback(async (..._args: unknown[]) => {
     await refreshHistory();

@@ -2,17 +2,17 @@
 // Contract Addresses from the current deployment snapshot.
 // USDC deposits are the live flow. `depositAnyStablecoin` remains a legacy alias in the ABI.
 export const BASE_SEPOLIA_ADDRESSES = {
-  usdc: '0x036CbD53842c5426634e7929541eC2318f3dCF7e' as const,
-  usdt: '0x0a215D8ba66387DCA84B284D18c3B4ec3de6E54a' as const,
-  dai: '0x89d50c47066b207d68a1a0decff41ebbdda441a2' as const,
-  mockDai: '0x89d50c47066b207d68a1a0decff41ebbdda441a2' as const,
-  vaultManager: '0x2df15b2cde939d31b62136fe1fe8ee595a2c357b' as const,
-  strategyRouter: '0xa75a715818aef85c3a5850cdf70c82c30c2487cd' as const,
-  riskRegistry: '0x745936b6ec8e9037c042623029cd473b7ae01144' as const,
-  feeCollector: '0xe885263cb6cd46632da046bb5a293aa3a630be4a' as const,
-  aavePool: '0x8bAB6d1b75f19e9eD9fCe8b9BD338844fF79aE27' as const,
-  compoundComet: '0xc3d688b66703497DAa19211E0b686300185341f5' as const,
-  swapRouter: '0x5969f3cfc1ffdfa22c779807aaf32033603f8be7' as const,
+  usdc: (process.env.NEXT_PUBLIC_USDC_ADDRESS ?? '0x036CbD53842c5426634e7929541eC2318f3dCF7e') as `0x${string}`,
+  usdt: (process.env.NEXT_PUBLIC_USDT_ADDRESS ?? '0x0a215D8ba66387DCA84B284D18c3B4ec3de6E54a') as `0x${string}`,
+  dai: (process.env.NEXT_PUBLIC_DAI_ADDRESS ?? '0x89d50c47066b207d68a1a0decff41ebbdda441a2') as `0x${string}`,
+  mockDai: (process.env.NEXT_PUBLIC_DAI_ADDRESS ?? '0x89d50c47066b207d68a1a0decff41ebbdda441a2') as `0x${string}`,
+  vaultManager: (process.env.NEXT_PUBLIC_VAULT_MANAGER ?? '0x2df15b2cde939d31b62136fe1fe8ee595a2c357b') as `0x${string}`,
+  strategyRouter: (process.env.NEXT_PUBLIC_STRATEGY_ROUTER ?? '0xa75a715818aef85c3a5850cdf70c82c30c2487cd') as `0x${string}`,
+  riskRegistry: (process.env.NEXT_PUBLIC_RISK_REGISTRY ?? '0x745936b6ec8e9037c042623029cd473b7ae01144') as `0x${string}`,
+  feeCollector: (process.env.NEXT_PUBLIC_FEE_COLLECTOR ?? '0xe885263cb6cd46632da046bb5a293aa3a630be4a') as `0x${string}`,
+  aavePool: (process.env.NEXT_PUBLIC_AAVE_POOL ?? '0x8bAB6d1b75f19e9eD9fCe8b9BD338844fF79aE27') as `0x${string}`,
+  compoundComet: (process.env.NEXT_PUBLIC_COMPOUND_COMET ?? '0xc3d688b66703497DAa19211E0b686300185341f5') as `0x${string}`,
+  swapRouter: (process.env.NEXT_PUBLIC_SWAP_ROUTER ?? '0x5969f3cfc1ffdfa22c779807aaf32033603f8be7') as `0x${string}`,
 } as const;
 
 export const BASE_MAINNET_ADDRESSES = {
@@ -27,7 +27,19 @@ export function getVaultManagerAddress(chainId: number): `0x${string}` | null {
 }
 
 export const CHAIN_ID = 84532; // Base Sepolia chain ID
-export const RPC_URL = 'https://sepolia.base.org';
+
+/**
+ * Block number just before the earliest contract deployment.
+ * All contracts were deployed around block 40,101,559.
+ * Scanning from here captures ALL historical events while skipping
+ * the ~40M empty blocks before the contracts existed.
+ */
+export const DEPLOYMENT_BLOCK = 40_100_000n;
+
+export const RPC_URL =
+  process.env.NEXT_PUBLIC_RPC_URL ??
+  process.env.NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL ??
+  'https://sepolia.base.org';
 
 // Account Roles
 export const ACCOUNT_ROLES = {

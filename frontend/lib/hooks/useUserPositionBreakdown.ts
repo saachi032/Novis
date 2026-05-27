@@ -14,7 +14,8 @@ export function useUserPositionBreakdown(userAddress?: string) {
     args: userAddress ? [userAddress as `0x${string}`] : undefined,
     query: {
       enabled: !!userAddress,
-      refetchInterval: 5000, // Refetch every 5 seconds for real-time updates
+      staleTime: 60_000,
+      refetchInterval: 120_000,
     },
   });
 

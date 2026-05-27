@@ -38,10 +38,13 @@ export function useStablecoinBalances() {
   const { address } = useAccount();
   const chainId = useChainId();
   const hydrated = useHydrated();
-  const options = getStablecoinOptions(chainId);
+  const options = useMemo(
+    () => getStablecoinOptions(chainId) ?? [],
+    [chainId]
+  );
 
   const contracts = useMemo(() => {
-    if (!options?.length || !address) return [];
+    if (!options.length || !address) return [];
     const addr = address as `0x${string}`;
     const list: {
       address: `0x${string}`;
@@ -86,7 +89,7 @@ export function useStablecoinBalances() {
 
   const balances = useMemo(() => {
     const out: Partial<Record<StablecoinId, StableBalance>> = {};
-    if (!data?.length || !options?.length) return out;
+    if (!data?.length || !options.length) return out;
 
     let dataIdx = 0;
 
@@ -139,7 +142,7 @@ export function useStablecoinBalances() {
   return {
     balances,
     totalApproxUsd,
-    options: options ?? [],
+    options,
     isLoading: isPending,
     error,
     refetch,

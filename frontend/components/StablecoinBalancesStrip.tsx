@@ -31,7 +31,7 @@ export function StablecoinBalancesStrip({
     address: address as `0x${string}` | undefined,
     query: {
       enabled: hydrated && !!address,
-      refetchInterval: 12_000,
+      refetchInterval: 60_000,
     },
   });
 

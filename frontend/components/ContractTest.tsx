@@ -15,7 +15,7 @@ export function ContractTest() {
     abi: VAULT_MANAGER_ABI,
     functionName: 'balanceOf',
     args: [address || '0x0000000000000000000000000000000000000000'],
-    query: { enabled: !!address },
+    query: { enabled: !!address, retry: false },
   });
 
   // Read total vault assets
@@ -23,6 +23,7 @@ export function ContractTest() {
     address: BASE_SEPOLIA_ADDRESSES.vaultManager,
     abi: VAULT_MANAGER_ABI,
     functionName: 'totalAssets',
+    query: { retry: false },
   });
 
   // Read APYs
@@ -30,6 +31,7 @@ export function ContractTest() {
     address: BASE_SEPOLIA_ADDRESSES.strategyRouter,
     abi: STRATEGY_ROUTER_ABI,
     functionName: 'getCurrentAPYs',
+    query: { retry: false },
   });
 
   if (!isConnected) {

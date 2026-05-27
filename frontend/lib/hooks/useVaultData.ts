@@ -5,6 +5,16 @@ import { STRATEGY_ROUTER_ABI } from "@/lib/abis/StrategyRouter";
 import { formatUSDC, bpsToPercentage } from "@/lib/utils/contractUtils";
 
 /**
+ * Shared query settings to prevent excessive RPC calls.
+ * staleTime ensures wagmi deduplicates identical queries across components.
+ * refetchInterval is set to 2 minutes (was 30s) to reduce polling frequency.
+ */
+const SHARED_QUERY = {
+  staleTime: 60_000,       // data stays fresh for 60s — no duplicate fetches
+  refetchInterval: 120_000, // poll every 2 min instead of 30s
+} as const;
+
+/**
  * Get the total assets held in the vault
  */
 export function useTotalAssets() {
@@ -12,9 +22,7 @@ export function useTotalAssets() {
     address: BASE_SEPOLIA_ADDRESSES.vaultManager,
     abi: VAULT_MANAGER_ABI,
     functionName: "totalAssets",
-    query: {
-      refetchInterval: 10000, // Refetch every 10 seconds
-    },
+    query: SHARED_QUERY,
   });
 
   return {
@@ -36,7 +44,7 @@ export function useUserVaultShares(address?: string) {
     args: address ? [address as `0x${string}`] : undefined,
     query: {
       enabled: !!address,
-      refetchInterval: 10000,
+      ...SHARED_QUERY,
     },
   });
 
@@ -60,7 +68,8 @@ export function useProtocolAPY(protocol: "aave" | "compound" | "morpho") {
     abi: STRATEGY_ROUTER_ABI,
     functionName,
     query: {
-      refetchInterval: 30000, // Refetch every 30 seconds
+      staleTime: 120_000,      // APY changes slowly — keep fresh for 2 min
+      refetchInterval: 300_000, // poll every 5 min (was 60s)
     },
   });
 
@@ -107,9 +116,7 @@ export function useUserPositionValue(userAddress?: string) {
     address: BASE_SEPOLIA_ADDRESSES.vaultManager,
     abi: VAULT_MANAGER_ABI,
     functionName: "totalSupply",
-    query: {
-      refetchInterval: 10000,
-    },
+    query: SHARED_QUERY,
   });
 
   let positionValue = "0";

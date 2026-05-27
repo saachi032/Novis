@@ -22,7 +22,7 @@ export function WalletOverview() {
     address: address as `0x${string}` | undefined,
     query: {
       enabled: !!address && hydrated,
-      refetchInterval: 10_000,
+      refetchInterval: 60_000,
     },
   });
 

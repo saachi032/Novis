@@ -55,8 +55,6 @@ export function useSetInvestmentStrategy() {
       const durationEnum = DURATION_TO_ENUM[durationKey];
 
       try {
-        console.log(`Setting strategy: risk=${riskLevel}, duration=${durationKey}`);
-        
         const txHash = await writeContractAsync({
           address: BASE_SEPOLIA_ADDRESSES.riskRegistry,
           abi: RISK_REGISTRY_ABI,
@@ -73,11 +71,9 @@ export function useSetInvestmentStrategy() {
           throw new Error("Strategy transaction reverted");
         }
         
-        console.log("Strategy set successfully, txHash:", txHash);
         return txHash;
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : "Failed to set strategy";
-        console.error("Strategy setting error:", errorMsg);
         throw new Error(errorMsg);
       }
     },

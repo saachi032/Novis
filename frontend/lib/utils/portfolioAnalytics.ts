@@ -93,6 +93,7 @@ export function buildPortfolioOverview({
   compoundBalance,
   morphoBalance,
   defaultRiskForLive,
+  trueTotalDeposited,
 }: {
   investments: Investment[];
   currentValue: number;
@@ -100,6 +101,7 @@ export function buildPortfolioOverview({
   compoundBalance: string;
   morphoBalance: string;
   defaultRiskForLive?: RiskLevel;
+  trueTotalDeposited?: number;
 }): PortfolioOverview {
   const onChain = investments.filter(
     (inv) => inv.status === "active" && !isLivePositionInvestment(inv)
@@ -128,17 +130,21 @@ export function buildPortfolioOverview({
     ];
   }
 
-  const totalDeposited = working.reduce(
-    (sum, inv) => sum + (parseFloat(inv.amount) || 0),
-    0
-  );
+  // Use the true total deposited passed from the historical aggregation engine,
+  // or fallback to summing the working set if not provided.
+  const totalDeposited =
+    trueTotalDeposited !== undefined
+      ? trueTotalDeposited
+      : working.reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0);
 
+  // If the user has completely withdrawn everything, effectiveCurrent is 0.
+  // Otherwise, fallback to totalDeposited if the RPC hasn't loaded position value yet.
   const effectiveCurrent =
-    currentValue > 0 ? currentValue : totalDeposited;
+    currentValue > 0 || totalDeposited === 0 ? currentValue : totalDeposited;
 
-  const totalYieldUsd = effectiveCurrent - totalDeposited;
-  const totalYieldPct =
-    totalDeposited > 0 ? (totalYieldUsd / totalDeposited) * 100 : 0;
+  // Ensure yield is calculated securely, floored at 0 if the user withdrew everything
+  const totalYieldUsd = totalDeposited === 0 ? 0 : effectiveCurrent - totalDeposited;
+  const totalYieldPct = totalDeposited > 0 ? (totalYieldUsd / totalDeposited) * 100 : 0;
 
   const liveProtocolSplit = buildProtocolSplitFromBalances(
     aaveBalance,

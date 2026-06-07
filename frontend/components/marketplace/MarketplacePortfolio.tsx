@@ -5,6 +5,8 @@ import { useMemo } from "react";
 import { useAccount } from "wagmi";
 import { useTotalAssets, useUserVaultShares, useVaultAPYs, useUserPositionValue } from "@/lib/hooks/useVaultData";
 import { useHydrated } from "@/lib/hooks/useHydrated";
+import { useTransactionHistory } from "@/lib/hooks/useTransactionHistory";
+import { parseDepositHistory } from "@/lib/utils/depositHistory";
 
 function formatUsd(n: number) {
   return new Intl.NumberFormat("en-US", {
@@ -22,16 +24,23 @@ export function MarketplacePortfolio() {
   const { shares } = useUserVaultShares(address);
   const { blendedAPY } = useVaultAPYs();
   const { positionValue } = useUserPositionValue(address);
+  const { rawEvents } = useTransactionHistory();
 
-  // Fallback to mock data if no shares (user hasn't deposited)
   const shareBigInt = shares && shares !== "0" ? parseFloat(shares) : 0;
-  const hasPosition = shareBigInt > 0;
+  const hasShares = shareBigInt > 0;
+
+  const { totalDeposited } = useMemo(() => {
+    return parseDepositHistory(rawEvents || []);
+  }, [rawEvents]);
+
+  // Determine if the user actually has an active position (either shares > 0, or they have deposited recently and waiting for sync)
+  const hasPosition = hasShares || totalDeposited > 0;
 
   const totals = useMemo(() => {
     // Only show real data - no mock/demo data
     const currentValue = parseFloat(positionValue || "0");
-    const deposited = shareBigInt;
-    const yieldUsd = currentValue - deposited;
+    const deposited = totalDeposited; // True deposited amount
+    const yieldUsd = currentValue > deposited ? currentValue - deposited : 0;
     const returnPct = deposited > 0 ? (yieldUsd / deposited) * 100 : 0;
     const avgApy = parseFloat(blendedAPY || "0");
 
@@ -42,7 +51,7 @@ export function MarketplacePortfolio() {
       returnPct,
       avgApy,
     };
-  }, [positionValue, shareBigInt, blendedAPY]);
+  }, [positionValue, totalDeposited, blendedAPY]);
 
   // Don't render hook-dependent content until after hydration
   if (!hydrated) {
@@ -67,6 +76,10 @@ export function MarketplacePortfolio() {
       </div>
     );
   }
+
+  // If the user has withdrawn everything (shares are 0 and totalDeposited is 0), don't show the active position block.
+  // Wait, if they withdrew everything, totalDeposited might be 0 but we still might want to show the empty state?
+  // Let's use `hasPosition` for that.
 
   return (
     <>
@@ -117,7 +130,7 @@ export function MarketplacePortfolio() {
             "No investments yet. Connect your wallet and deposit USDC to start earning yield."
           )}
         </p>
-        {hasPosition ? (
+        {hasPosition && shareBigInt > 0 ? (
           <div className="mt-4 overflow-x-auto rounded-2xl border border-brand-gray/80 bg-white shadow-soft">
             <table className="w-full min-w-[640px] text-left text-sm">
               <thead>

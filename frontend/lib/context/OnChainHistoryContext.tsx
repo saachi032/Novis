@@ -80,6 +80,7 @@ type HistoryCacheEntry = {
   timestamp: number;
   investments: Investment[];
   rebalanceHistory: RebalanceEntry[];
+  rawEvents?: any[];
 };
 
 const historyCache = new Map<string, HistoryCacheEntry>();
@@ -187,6 +188,7 @@ type OnChainHistoryContextValue = {
   getInvestmentById: (id: string) => Investment | undefined;
   getActiveInvestments: () => Investment[];
   getTotalYield: () => string;
+  rawEvents: any[];
 };
 
 const OnChainHistoryContext = createContext<OnChainHistoryContextValue | null>(null);
@@ -460,6 +462,7 @@ async function fetchOnChainHistory(
     timestamp: Date.now(),
     investments: sortedInvestments,
     rebalanceHistory,
+    rawEvents: events,
   };
   historyCache.set(cacheKey, result);
   return result;
@@ -496,7 +499,8 @@ export function OnChainHistoryProvider({ children }: { children: ReactNode }) {
   const publicClient = usePublicClient();
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [rebalanceHistory, setRebalanceHistory] = useState<RebalanceEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [rawEvents, setRawEvents] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const publicClientRef = useRef(publicClient);
@@ -509,6 +513,7 @@ export function OnChainHistoryProvider({ children }: { children: ReactNode }) {
   const applyResult = useCallback((result: HistoryCacheEntry) => {
     setInvestments(result.investments);
     setRebalanceHistory(result.rebalanceHistory);
+    setRawEvents(result.rawEvents || []);
     setError(null);
   }, []);
 

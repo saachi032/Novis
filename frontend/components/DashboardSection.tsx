@@ -8,6 +8,7 @@ import { RiskAndFees } from "@/components/RiskAndFees";
 import { CheckingDuration } from "@/components/CheckingDuration";
 import { RebalanceTable } from "@/components/RebalanceTable";
 import { InvestmentPortfolio } from "@/components/InvestmentPortfolio";
+import { HistoricalPerformanceCard } from "@/components/HistoricalPerformanceCard";
 import { BASE_SEPOLIA_DEPLOYMENT } from "@/lib/contracts";
 import { useVaultAPYs, useUserPositionValue } from "@/lib/hooks/useVaultData";
 import { useHydrated } from "@/lib/hooks/useHydrated";
@@ -61,6 +62,7 @@ export function DashboardSection() {
             Live position
           </h3>
           <InvestmentPortfolio />
+          <HistoricalPerformanceCard />
         </div>
 
         {hydrated ? (

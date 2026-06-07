@@ -90,20 +90,9 @@ export function useDeposit() {
 
         setStep("depositing");
         
-        // 2. Simulate deposit to catch contract reverts gracefully
-        try {
-          await publicClient.simulateContract({
-            account: address,
-            address: vaultManagerAddress,
-            abi: VAULT_MANAGER_ABI,
-            functionName: "deposit",
-            args: [parsed, address],
-          });
-        } catch (simErr: any) {
-          console.error("Deposit simulation failed:", simErr);
-          throw new Error(`Deposit simulation failed: ${simErr.message || "Unknown error"}`);
-        }
-
+        // 2. We skip simulateContract here because RPC nodes often lag on Base Sepolia.
+        // The approve transaction just mined, but simulateContract hits a load-balanced node
+        // that hasn't seen the approve yet, causing fake "transfer amount exceeds allowance" reverts.
         const depositHash = await writeContractAsync({
           address: vaultManagerAddress,
           abi: VAULT_MANAGER_ABI,

@@ -21,6 +21,7 @@ export function useTransactionHistory() {
     getInvestmentById,
     getActiveInvestments,
     getTotalYield,
+    rawEvents,
   } = useOnChainHistory();
 
   const forceRefresh = useCallback(() => refreshHistory(true), [refreshHistory]);
@@ -46,5 +47,6 @@ export function useTransactionHistory() {
     getInvestmentById,
     getActiveInvestments,
     getTotalYield,
+    rawEvents,
   };
 }

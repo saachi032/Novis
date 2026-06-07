@@ -218,9 +218,7 @@ export function CandleChart({
         };
 
         ws.onclose = () => {
-          if (!cancelled) {
-            console.log("WebSocket closed");
-          }
+          // WebSocket closed
         };
 
         ws.onerror = (e) => {

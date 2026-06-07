@@ -18,6 +18,7 @@ import {
   isLivePositionInvestment,
 } from "@/lib/utils/liveVaultInvestment";
 import { buildPortfolioOverview, formatUsd, sumProtocolFromTransactions } from "@/lib/utils/portfolioAnalytics";
+import { parseDepositHistory } from "@/lib/utils/depositHistory";
 import type { Investment } from "@/lib/hooks/useTransactionHistory";
 import type { RiskGroupSummary } from "@/lib/utils/portfolioAnalytics";
 
@@ -32,7 +33,7 @@ type PortfolioView = "overview" | "risk" | "deposits";
 export function InvestmentPortfolio() {
   const hydrated = useHydrated();
   const { address } = useAccount();
-  const { investments, isLoading, error } = useTransactionHistory();
+  const { investments, isLoading, error, rawEvents } = useTransactionHistory();
   const { history: rebalanceHistory } = useRebalanceHistory();
   const { riskLevel: currentStrategyRisk } = useUserStrategy(hydrated ? address : undefined);
   const { shares } = useUserVaultShares(address);
@@ -78,6 +79,10 @@ export function InvestmentPortfolio() {
     currentStrategyRisk,
   ]);
 
+  const { totalDeposited: trueTotalDeposited } = useMemo(() => {
+    return parseDepositHistory(rawEvents || []);
+  }, [rawEvents]);
+
   const overview = useMemo(
     () =>
       buildPortfolioOverview({
@@ -86,7 +91,7 @@ export function InvestmentPortfolio() {
         aaveBalance,
         compoundBalance,
         morphoBalance,
-        defaultRiskForLive: currentStrategyRisk,
+        trueTotalDeposited,
       }),
     [
       displayInvestments,
@@ -94,7 +99,7 @@ export function InvestmentPortfolio() {
       aaveBalance,
       compoundBalance,
       morphoBalance,
-      currentStrategyRisk,
+      trueTotalDeposited,
     ]
   );
 

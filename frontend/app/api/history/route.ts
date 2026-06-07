@@ -47,8 +47,6 @@ async function syncEvents() {
     return;
   }
 
-  console.log(`[Indexer] Syncing from ${startBlock} to ${latestBlock}...`);
-
   const vaultAddresses = [
     BASE_SEPOLIA_ADDRESSES.vaultManager,
     ...getLegacyVaultManagers(),
@@ -194,8 +192,6 @@ async function syncEvents() {
   syncState.lastSyncedBlock = Number(latestBlock);
   syncState.lastUpdatedAt = new Date();
   await syncState.save();
-
-  console.log(`[Indexer] Sync complete up to ${latestBlock}.`);
 }
 
 export async function GET(request: Request) {

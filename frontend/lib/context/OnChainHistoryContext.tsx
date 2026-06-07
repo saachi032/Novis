@@ -258,84 +258,29 @@ async function fetchOnChainHistory(
   address: `0x${string}`
 ): Promise<HistoryCacheEntry> {
   const cacheKey = historyCacheKey(CHAIN_ID, address);
-  const fromBlock = DEPLOYMENT_BLOCK;
-  const vaultAddresses = [
-    BASE_SEPOLIA_ADDRESSES.vaultManager,
-    ...getLegacyVaultManagers(),
-  ];
 
-  const strategyLogs = await getContractEventsInChunks({
-    publicClient,
-    address: BASE_SEPOLIA_ADDRESSES.riskRegistry,
-    abi: RISK_REGISTRY_ABI,
-    eventName: "StrategySet",
-    args: { user: address },
-    fromBlock,
-  });
+  // 1. Fetch from our new internal indexer (MongoDB via Next.js API)
+  const res = await fetch(`/api/history?address=${address}`);
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || "Failed to fetch history from API");
+  }
+  const data = await res.json();
+  const events = data.events as any[];
 
-  const depositLogs = await getContractEventsFromAddresses({
-    publicClient,
-    addresses: vaultAddresses,
-    abi: VAULT_MANAGER_ABI,
-    eventName: "Deposit",
-    args: { owner: address },
-    fromBlock,
-  });
+  // 2. Separate events by name
+  const strategyLogs = events.filter(e => e.eventName === "StrategySet");
+  const depositLogs = events.filter(e => e.eventName === "Deposit");
+  const investedLogs = events.filter(e => e.eventName === "UserFundsInvested");
+  const withdrawLogs = events.filter(e => e.eventName === "Withdraw");
+  const redeemedLogs = events.filter(e => e.eventName === "UserFundsRedeemed");
+  const rebalanceLogs = events.filter(e => e.eventName === "UserRebalanced");
 
-  const investedLogs = await getContractEventsInChunks({
-    publicClient,
-    address: BASE_SEPOLIA_ADDRESSES.strategyRouter,
-    abi: STRATEGY_ROUTER_ABI,
-    eventName: "UserFundsInvested",
-    args: { user: address },
-    fromBlock,
-  });
-
-  const withdrawLogs = await getContractEventsFromAddresses({
-    publicClient,
-    addresses: vaultAddresses,
-    abi: VAULT_MANAGER_ABI,
-    eventName: "Withdraw",
-    args: { owner: address },
-    fromBlock,
-  });
-
-  const redeemedLogs = await getContractEventsInChunks({
-    publicClient,
-    address: BASE_SEPOLIA_ADDRESSES.strategyRouter,
-    abi: STRATEGY_ROUTER_ABI,
-    eventName: "UserFundsRedeemed",
-    args: { user: address },
-    fromBlock,
-  });
-
-  const rebalanceLogs = await getContractEventsInChunks({
-    publicClient,
-    address: BASE_SEPOLIA_ADDRESSES.strategyRouter,
-    abi: STRATEGY_ROUTER_ABI,
-    eventName: "UserRebalanced",
-    args: { user: address },
-    fromBlock,
-  });
-
-  const blockTimestampCache = new Map<bigint, number>();
-  const getTimestamp = async (blockNumber: bigint | null | undefined) => {
-    if (blockNumber === null || blockNumber === undefined) return Date.now();
-    const cached = blockTimestampCache.get(blockNumber);
-    if (cached) return cached;
-    const block = await publicClient.getBlock({ blockNumber });
-    const ts = Number(block.timestamp) * 1000;
-    blockTimestampCache.set(blockNumber, ts);
-    return ts;
-  };
-
-  const strategySnapshots: StrategySnapshot[] = await Promise.all(
-    (strategyLogs as any[]).map(async (log) => ({
-      timestamp: await getTimestamp(log.blockNumber),
-      riskLevel: mapRiskLevel(Number(log.args?.riskProfile ?? 1)),
-      duration: mapDuration(Number(log.args?.checkingDuration ?? 1)),
-    }))
-  ).then((snapshots) => snapshots.sort((a, b) => a.timestamp - b.timestamp));
+  const strategySnapshots: StrategySnapshot[] = strategyLogs.map((log) => ({
+    timestamp: log.timestamp,
+    riskLevel: mapRiskLevel(Number(log.args?.riskProfile ?? 1)),
+    duration: mapDuration(Number(log.args?.checkingDuration ?? 1)),
+  })).sort((a, b) => a.timestamp - b.timestamp);
 
   const investedByTx = new Map<string, any>();
   for (const log of investedLogs as any[]) {
@@ -346,11 +291,11 @@ async function fetchOnChainHistory(
     redeemedByTx.set(log.transactionHash, log);
   }
 
-  const depositsSorted = [...(depositLogs as any[])].sort((a, b) => {
-    const aBlock = Number(a.blockNumber ?? 0n);
-    const bBlock = Number(b.blockNumber ?? 0n);
+  const depositsSorted = depositLogs.sort((a, b) => {
+    const aBlock = a.blockNumber ?? 0;
+    const bBlock = b.blockNumber ?? 0;
     if (aBlock !== bBlock) return aBlock - bBlock;
-    return Number(a.logIndex ?? 0n) - Number(b.logIndex ?? 0n);
+    return a.timestamp - b.timestamp;
   });
 
   let nextInvestments: Investment[] = [];
@@ -358,7 +303,7 @@ async function fetchOnChainHistory(
 
   for (const log of depositsSorted) {
     const txHash = String(log.transactionHash);
-    const timestamp = await getTimestamp(log.blockNumber);
+    const timestamp = log.timestamp;
     const strategy = latestStrategyAt(strategySnapshots, timestamp);
     const assets = BigInt(log.args?.assets ?? 0n);
     const shares = BigInt(log.args?.shares ?? 0n);
@@ -420,15 +365,15 @@ async function fetchOnChainHistory(
     }
   }
 
-  const withdrawSorted = [...(withdrawLogs as any[])].sort((a, b) => {
-    const aBlock = Number(a.blockNumber ?? 0n);
-    const bBlock = Number(b.blockNumber ?? 0n);
+  const withdrawSorted = withdrawLogs.sort((a, b) => {
+    const aBlock = a.blockNumber ?? 0;
+    const bBlock = b.blockNumber ?? 0;
     if (aBlock !== bBlock) return aBlock - bBlock;
-    return Number(a.logIndex ?? 0n) - Number(b.logIndex ?? 0n);
+    return a.timestamp - b.timestamp;
   });
 
   for (const log of withdrawSorted) {
-    const timestamp = await getTimestamp(log.blockNumber);
+    const timestamp = log.timestamp;
     const assets = BigInt(log.args?.assets ?? 0n);
     const shares = BigInt(log.args?.shares ?? 0n);
     const redeemed = redeemedByTx.get(String(log.transactionHash));
@@ -457,15 +402,15 @@ async function fetchOnChainHistory(
     );
   }
 
-  const rebalanceSorted = [...(rebalanceLogs as any[])].sort((a, b) => {
-    const aBlock = Number(a.blockNumber ?? 0n);
-    const bBlock = Number(b.blockNumber ?? 0n);
+  const rebalanceSorted = rebalanceLogs.sort((a, b) => {
+    const aBlock = a.blockNumber ?? 0;
+    const bBlock = b.blockNumber ?? 0;
     if (aBlock !== bBlock) return aBlock - bBlock;
-    return Number(a.logIndex ?? 0n) - Number(b.logIndex ?? 0n);
+    return a.timestamp - b.timestamp;
   });
 
   for (const log of rebalanceSorted) {
-    const timestamp = await getTimestamp(log.blockNumber);
+    const timestamp = log.timestamp;
     const amount = BigInt(log.args?.amount ?? 0n);
     const from = protocolLabel(Number(log.args?.fromProtocol ?? 0));
     const to = protocolLabel(Number(log.args?.toProtocol ?? 0));

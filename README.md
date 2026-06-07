@@ -1,44 +1,74 @@
-﻿# Novis 🏦
+# On-Chain HACKX: DeFi Yield Optimizer & Robo-Advisor
 
- Access via - https://on-chain-hackx.onrender.com
+A non-custodial, intelligent yield optimizer built on **Base Sepolia**. This protocol automates USDC yield generation by dynamically routing liquidity across leading lending markets (Aave v3, Compound v3, Morpho Blue) based on individual user risk profiles.
 
-**On-Chain Stablecoin Yield Optimizer on Base**
+## Architecture
 
-## 🚨 The Problem: "Lazy Capital"
+The project consists of three main pillars: Smart Contracts, the Frontend Dashboard, and the Internal Indexer.
 
-Despite over $150 billion in circulating stablecoins, the vast majority of retail capital sits idle, earning near-zero returns. This "lazy capital" problem persists because accessing decentralized yields remains fundamentally broken for the average user. Manually chasing optimal APYs across platforms like Aave and Compound requires deep technical expertise in protocol selection, constant monitoring for gas-efficient rebalancing, and tedious token conversions just to enter a position. Ultimately, the friction and complexity of navigating these barriers outweigh the potential returns, locking everyday users out of automated wealth generation.
+### 1. Smart Contracts
+The protocol is powered by a set of modular smart contracts deployed on Base Sepolia:
 
-## 💡 Our Solution
+- **`VaultManager` (ERC-4626)**: The primary entry point for users. It accepts USDC deposits, mints vault shares, and handles withdrawals/redemptions. 
+- **`StrategyRouter`**: The core yield engine. It takes idle USDC from the vault and deploys it into underlying protocols (Aave, Compound, Morpho). It exposes a `rebalance()` function that keepers can call to move funds between protocols if APY rates shift.
+- **`RiskRegistry`**: A registry that stores user-selected risk profiles (Conservative, Balanced, Aggressive) and desired rebalancing frequencies.
+- **`FeeCollector`**: A standalone contract to manage protocol revenue.
 
-**Novis** is a non-custodial DeFi vault on the **Base** network that automatically routes stablecoin deposits into optimal yield strategies across platforms like Aave, Compound, and Morpho. We abstract away the friction of DeFi, turning complex yield farming into a one-click experience.
+### 2. Frontend Application
+A stunning, fully responsive dashboard built with **Next.js 14 (App Router)**, **Tailwind CSS**, and **wagmi/viem**.
 
-### Core Features
+- **Dynamic Allocations**: Real-time visualization of where funds are deployed, split by percentage and actual dollar value, alongside live protocol APYs.
+- **Risk-Grouped Deposits**: The portfolio groups historical deposits into risk buckets, making it easy to track performance based on strategy.
+- **Rebalance History**: A detailed table tracking automated on-chain rebalances (e.g., when the protocol keeper moves funds from Aave to Morpho to chase better yields).
+- **Graceful Fallbacks**: Features a robust withdrawal flow that attempts standard ERC-4626 withdrawals and automatically falls back to share redemptions if protocol liquidity constraints (demo mode) are encountered.
 
-- **Multi-Asset Entry:** Deposit USDC, USDT, or DAI seamlessly using an integrated Uniswap V3 auto-router.
-- **ERC-4626 Standard:** Transparent share-based accounting that pools user capital to socialize Base network gas costs.
-- **Smart Allocation:** Algorithmic yield routing across Aave, Compound, and Morpho, protected by live profit gates.
-- **Non-Custodial:** Trustless infrastructure where users maintain full wallet control and can withdraw funds anytime.
+### 3. Internal MongoDB Indexer
+Fetching raw blockchain event history via an RPC node for every page load is slow and triggers rate limits ("RPC hammering"). To solve this, the application features a custom, blazing-fast indexer built entirely inside Next.js using **MongoDB** and **Mongoose**.
 
-## 🏗 Architecture & Tech Stack
+- **On-Demand Sync**: When the frontend requests history via `/api/history`, the API checks the database's `SyncState`. It only asks the Base RPC for blocks that were minted *after* the last sync.
+- **Raw Event Storage**: New events (`Deposit`, `Withdraw`, `UserFundsInvested`, `UserRebalanced`, etc.) are bulk-inserted into the `OnChainEvent` collection.
+- **Instant Loads**: The frontend context (`OnChainHistoryContext.tsx`) reconstructs complex investment timelines, yield calculations, and split breakdowns instantly using the JSON provided by the database.
 
-### Smart Contracts (Backend)
+---
 
-- **Solidity (^0.8.28):** Modular contract architecture deployed on Base Sepolia.
-- **OpenZeppelin:** Extensively utilizes secure standards including ERC-4626, ERC-20, Pausable, ReentrancyGuard, and SafeERC20.
-- **VaultManager:** The core accounting engine pooling deposits and minting `vUSDC` shares.
-- **StrategyRouter:** The on-chain executor integrating directly with external DeFi money markets.
-- **Protocol Integrations:** Native integration with Aave v3, Compound v3, Morpho, and the Uniswap V3 Router.
+## Setup & Local Development
 
-### User Interface (Frontend)
+### Prerequisites
+- Node.js (v18+)
+- MongoDB running locally (or a free cluster on MongoDB Atlas)
 
-- **Framework:** Next.js (App Router), React 18, TypeScript.
-- **Web3 Integration:** wagmi, viem, and RainbowKit for seamless wallet connection and transaction handling.
-- **State & Styling:** Tailwind CSS for rapid UI design, TanStack React Query for data fetching, and lightweight-charts/Recharts for real-time yield visualization.
+### Installation
 
-## ⚙️ How It Works (The Engine)
+1. **Clone and Install**
+   ```bash
+   cd frontend
+   npm install
+   ```
 
-1. **Deposit & Zap:** Users deposit USDC directly, or supply USDT/DAI. If USDT/DAI is supplied, the vault's Zapper auto-routes it through Uniswap V3 to convert it to USDC in the same transaction.
-2. **Capital Pooling:** Funds enter the ERC-4626 vault, socializing gas costs so transaction fees become a microscopic fraction of a cent per user.
-3. **Yield Evaluation:** An off-chain Keeper bot monitors Time-Weighted Yields (12h EMA) across supported lending protocols to ignore fake 1-block flash loan spikes.
-4. **The Profitability Gate:** Before any rebalancing occurs, the bot runs a live gas-cost simulation on the Base network. If the expected yield doesn't mathematically exceed the gas fee, the transaction aborts, ensuring capital is never bled to network fees.
-5. **Execution:** The `StrategyRouter` smoothly shifts capital between Aave, Compound, or Morpho to maximize APY.
+2. **Environment Variables**
+   Create a `.env.local` file in the `frontend` directory and provide your MongoDB connection string. For a local setup, use:
+   ```env
+   MONGODB_URI="mongodb://127.0.0.1:27017/on-chain-hackx"
+   ```
+
+3. **Run the Development Server**
+   ```bash
+   npm run dev
+   ```
+   Open [http://localhost:3000](http://localhost:3000) in your browser. The first time you load the dashboard, the indexer will automatically scan Base Sepolia from block `40,085,385` to populate your database. Subsequent loads will be nearly instantaneous.
+
+---
+
+## Contract Addresses (Base Sepolia)
+- **USDC**: `0x036CbD53842c5426634e7929541eC2318f3dCF7e`
+- **VaultManager**: `0x1694D4451Cf9463F998773C343d42342445F43eC`
+- **StrategyRouter**: `0xA75a715818Aef85C3A5850cdF70C82C30C2487Cd`
+- **RiskRegistry**: `0x745936b6ec8e9037C042623029Cd473B7aE01144`
+- **FeeCollector**: `0x9Fde5B14A0e164edB333843Bf30b9f12DA0F0841`
+
+## Built With
+- **Next.js** (React Framework)
+- **wagmi & viem** (Ethereum Hooks & RPC Client)
+- **TailwindCSS** (Styling & Dark Mode)
+- **MongoDB & Mongoose** (Database Indexer)
+- **Base** (L2 Deployment)

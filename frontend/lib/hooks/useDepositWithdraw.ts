@@ -60,7 +60,22 @@ export function useDeposit() {
       const parsed = parseUSDC(amount);
 
       try {
+        // 1. Check user balance first to provide a clear error
+        const userBalance = (await publicClient.readContract({
+          address: BASE_SEPOLIA_DEPLOYMENT.usdc,
+          abi: USDC_ABI,
+          functionName: "balanceOf",
+          args: [address],
+        })) as bigint;
+
+        if (parsed > userBalance) {
+          throw new Error(
+            `Insufficient balance. You only have ${formatUSDC(userBalance)} testnet USDC.`
+          );
+        }
+
         setStep("approving");
+        // We skip simulating approve to save RPC calls and avoid rate limits on public nodes
         const approveHash = await writeContractAsync({
           address: BASE_SEPOLIA_DEPLOYMENT.usdc,
           abi: USDC_ABI,
@@ -70,10 +85,25 @@ export function useDeposit() {
         });
         const approveReceipt = await publicClient.waitForTransactionReceipt({ hash: approveHash });
         if (approveReceipt.status !== "success") {
-          throw new Error("USDC approval reverted");
+          throw new Error("USDC approval reverted on-chain");
         }
 
         setStep("depositing");
+        
+        // 2. Simulate deposit to catch contract reverts gracefully
+        try {
+          await publicClient.simulateContract({
+            account: address,
+            address: vaultManagerAddress,
+            abi: VAULT_MANAGER_ABI,
+            functionName: "deposit",
+            args: [parsed, address],
+          });
+        } catch (simErr: any) {
+          console.error("Deposit simulation failed:", simErr);
+          throw new Error(`Deposit simulation failed: ${simErr.message || "Unknown error"}`);
+        }
+
         const depositHash = await writeContractAsync({
           address: vaultManagerAddress,
           abi: VAULT_MANAGER_ABI,
@@ -83,10 +113,13 @@ export function useDeposit() {
         });
         const depositReceipt = await publicClient.waitForTransactionReceipt({ hash: depositHash });
         if (depositReceipt.status !== "success") {
-          throw new Error("Vault deposit reverted");
+          throw new Error("Vault deposit reverted on-chain");
         }
         setHash(depositHash);
         return depositHash;
+      } catch (err: any) {
+        console.error("Deposit error:", err);
+        throw err;
       } finally {
         setStep("idle");
       }

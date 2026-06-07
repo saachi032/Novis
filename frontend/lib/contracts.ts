@@ -32,7 +32,7 @@ export const ACCOUNT_ROLES = {
   treasury: "0x73Fa5dBc79e5e9c46C2ce74763F697B6b7C8fD7a" as const,
 } as const;
 
-export const DEPLOYMENT_BLOCK = 40_100_000n;
+export const DEPLOYMENT_BLOCK = 40_085_385n;
 
 export const RPC_URL =
   process.env.NEXT_PUBLIC_RPC_URL ??

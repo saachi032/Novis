@@ -42,15 +42,15 @@ export function DashboardSection() {
         </p>
 
         <div className="mx-auto mt-6 grid max-w-3xl gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl border border-brand-gray/60 bg-white p-3 text-left shadow-soft">
+          <div className="surface-card p-3 text-left">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-500">Vault</p>
             <p className="mt-1 text-xs font-mono text-brand-black">{shortAddress(BASE_SEPOLIA_DEPLOYMENT.vaultManager)}</p>
           </div>
-          <div className="rounded-2xl border border-brand-gray/60 bg-white p-3 text-left shadow-soft">
+          <div className="surface-card p-3 text-left">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-500">Strategy</p>
             <p className="mt-1 text-xs font-mono text-brand-black">{shortAddress(BASE_SEPOLIA_DEPLOYMENT.strategyRouter)}</p>
           </div>
-          <div className="rounded-2xl border border-brand-gray/60 bg-white p-3 text-left shadow-soft">
+          <div className="surface-card p-3 text-left">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-500">Risk registry</p>
             <p className="mt-1 text-xs font-mono text-brand-black">{shortAddress(BASE_SEPOLIA_DEPLOYMENT.riskRegistry)}</p>
           </div>
@@ -100,17 +100,17 @@ export function DashboardSection() {
           // Server render / loading skeleton
           <div className="mt-12 space-y-5">
             <div className="grid items-stretch gap-5 lg:grid-cols-4">
-              <div className="surface-card h-40 animate-pulse bg-neutral-100" />
-              <div className="surface-card h-40 animate-pulse bg-neutral-100" />
-              <div className="surface-card h-40 animate-pulse bg-neutral-100" />
-              <div className="surface-card h-40 animate-pulse bg-neutral-100" />
+              <div className="surface-card h-40 animate-pulse bg-neutral-100 dark:bg-neutral-800" />
+              <div className="surface-card h-40 animate-pulse bg-neutral-100 dark:bg-neutral-800" />
+              <div className="surface-card h-40 animate-pulse bg-neutral-100 dark:bg-neutral-800" />
+              <div className="surface-card h-40 animate-pulse bg-neutral-100 dark:bg-neutral-800" />
             </div>
             <div className="grid items-stretch gap-5 lg:grid-cols-2">
-              <div className="surface-card h-40 animate-pulse bg-neutral-100" />
-              <div className="surface-card h-40 animate-pulse bg-neutral-100" />
+              <div className="surface-card h-40 animate-pulse bg-neutral-100 dark:bg-neutral-800" />
+              <div className="surface-card h-40 animate-pulse bg-neutral-100 dark:bg-neutral-800" />
             </div>
             <div className="grid items-stretch gap-5 lg:grid-cols-1">
-              <div className="surface-card h-40 animate-pulse bg-neutral-100" />
+              <div className="surface-card h-40 animate-pulse bg-neutral-100 dark:bg-neutral-800" />
             </div>
           </div>
         )}
@@ -120,7 +120,19 @@ export function DashboardSection() {
             <RebalanceTable />
           </div>
         ) : (
-          <div className="mt-8 h-64 animate-pulse bg-neutral-100 rounded-2xl" />
+          <div className="mt-8 h-64 animate-pulse bg-neutral-100 dark:bg-neutral-800 rounded-2xl" />
+        )}
+        
+        {hydrated && (
+          <div className="mt-8 flex justify-center">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-green/10 px-3 py-1 text-[10px] font-semibold text-brand-green">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-green opacity-75"></span>
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-green"></span>
+              </span>
+              Live from Base Sepolia
+            </span>
+          </div>
         )}
       </div>
     </section>

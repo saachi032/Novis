@@ -11,6 +11,7 @@ import { useState, type ReactNode } from "react";
 import { wagmiConfig } from "@/lib/wagmi";
 import { WalletDisplayNameProvider } from "@/components/wallet/WalletDisplayNameContext";
 import { StablecoinProvider } from "@/lib/context/StablecoinContext";
+import { OnChainHistoryProvider } from "@/lib/context/OnChainHistoryContext";
 import { ThemeProvider, useTheme } from "@/components/ThemeProvider";
 
 import "@rainbow-me/rainbowkit/styles.css";
@@ -42,7 +43,8 @@ export function Providers({ children }: { children: ReactNode }) {
             retry: false,
             refetchOnWindowFocus: false,
             refetchOnReconnect: false,
-            staleTime: 30_000,
+            refetchOnMount: false,
+            staleTime: 60_000,
           },
         },
       })
@@ -54,7 +56,9 @@ export function Providers({ children }: { children: ReactNode }) {
         <ThemeProvider>
           <RainbowKitThemed>
             <WalletDisplayNameProvider>
-              <StablecoinProvider>{children}</StablecoinProvider>
+              <StablecoinProvider>
+                <OnChainHistoryProvider>{children}</OnChainHistoryProvider>
+              </StablecoinProvider>
             </WalletDisplayNameProvider>
           </RainbowKitThemed>
         </ThemeProvider>

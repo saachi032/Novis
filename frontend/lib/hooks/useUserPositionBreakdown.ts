@@ -14,8 +14,10 @@ export function useUserPositionBreakdown(userAddress?: string) {
     args: userAddress ? [userAddress as `0x${string}`] : undefined,
     query: {
       enabled: !!userAddress,
-      staleTime: 60_000,
-      refetchInterval: 120_000,
+      staleTime: 120_000,
+      refetchInterval: 300_000,
+      refetchIntervalInBackground: false,
+      refetchOnMount: false as const,
     },
   });
 
@@ -33,6 +35,7 @@ export function useUserPositionBreakdown(userAddress?: string) {
       morphoPercentage: 0,
       isLoading,
       error,
+      refetch,
     };
   }
 

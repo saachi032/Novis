@@ -9,6 +9,7 @@ import { useStrategyWithRetry } from "@/lib/hooks/useStrategyWithRetry";
 import type { RiskLevel, DurationKey } from "@/lib/hooks/useInvestmentStrategy";
 import { useHydrated } from "@/lib/hooks/useHydrated";
 import { useTransactionHistory } from "@/lib/hooks/useTransactionHistory";
+import { BASE_SEPOLIA_DEPLOYMENT } from "@/lib/contracts";
 import {
   getStablecoinOptions,
   type StablecoinId,
@@ -170,10 +171,12 @@ export function DepositPanel() {
       )}
       
       <h3 className="font-display text-lg font-bold text-brand-black">
-        Deposit USDC
+        Deposit into USDC Vault
       </h3>
       <p className="mt-1 text-xs text-neutral-500">
-        Earn {blendedAPY}% APY through Aave and Compound on Base Sepolia.
+        Funds go to VaultManager ({BASE_SEPOLIA_DEPLOYMENT.vaultManager.slice(0, 6)}…
+        {BASE_SEPOLIA_DEPLOYMENT.vaultManager.slice(-4)}) on Base Sepolia, then StrategyRouter
+        allocates across Aave and Compound. Earn ~{blendedAPY}% blended APY.
       </p>
 
       <p className="mt-2 text-xs text-neutral-500">

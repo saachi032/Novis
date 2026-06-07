@@ -156,6 +156,20 @@ export const VAULT_MANAGER_ABI = [
   },
   {
     type: "function",
+    name: "maxWithdraw",
+    stateMutability: "view",
+    inputs: [{ name: "owner", type: "address" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "maxRedeem",
+    stateMutability: "view",
+    inputs: [{ name: "owner", type: "address" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
     name: "strategyRouter",
     stateMutability: "view",
     inputs: [],

@@ -46,6 +46,6 @@ body {
 
 @layer components {
   .surface-card {
-    @apply rounded-2xl border border-brand-gray/80 bg-white text-brand-black shadow-soft;
+    @apply rounded-2xl border border-brand-gray/80 bg-white text-brand-black shadow-soft dark:bg-[#222826] dark:border-brand-gray/40 dark:text-neutral-100 dark:shadow-none;
   }
 }

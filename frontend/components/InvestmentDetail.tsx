@@ -2,354 +2,349 @@
 
 import { useMemo, useState } from "react";
 import type { Investment } from "@/lib/hooks/useTransactionHistory";
+import type { RebalanceEntry } from "@/lib/hooks/useRebalanceHistory";
+import {
+  buildProtocolSplitFromBalances,
+  formatPct,
+  formatUsd,
+  sumProtocolFromTransactions,
+  type ProtocolSplit,
+  type RiskGroupSummary,
+} from "@/lib/utils/portfolioAnalytics";
+import { isLivePositionInvestment } from "@/lib/utils/liveVaultInvestment";
+import { ProtocolSplitBars } from "@/components/ProtocolSplitBars";
+import { useVaultAPYs } from "@/lib/hooks/useVaultData";
+
+const EXPLORER = "https://sepolia.basescan.org";
 
 interface InvestmentDetailProps {
   investment: Investment;
   onClose: () => void;
+  liveProtocol?: {
+    aaveBalance: string;
+    compoundBalance: string;
+    morphoBalance: string;
+  };
+  rebalanceHistory?: RebalanceEntry[];
+  riskGroup?: RiskGroupSummary;
 }
 
-export function InvestmentDetail({ investment, onClose }: InvestmentDetailProps) {
-  const [view, setView] = useState<"overview" | "history" | "chart">("overview");
-  const stats = useMemo(() => {
-    const firstYield = investment.yields[0];
-    const lastYield = investment.yields[investment.yields.length - 1];
-    const totalDays = Math.floor(
-      (lastYield.timestamp - firstYield.timestamp) / (1000 * 60 * 60 * 24)
+export function InvestmentDetail({
+  investment,
+  onClose,
+  liveProtocol,
+  rebalanceHistory = [],
+  riskGroup,
+}: InvestmentDetailProps) {
+  const [view, setView] = useState<"overview" | "splits" | "activity">("overview");
+  const isLive = isLivePositionInvestment(investment);
+  const { aaveAPY, compoundAPY, morphoAPY } = useVaultAPYs();
+
+  const depositTxn = investment.transactions.find((t) => t.type === "deposit");
+  const depositSplit = useMemo(
+    () =>
+      riskGroup
+        ? riskGroup.allocationAtDeposit
+        : depositTxn
+          ? sumProtocolFromTransactions([depositTxn])
+          : sumProtocolFromTransactions(investment.transactions),
+    [depositTxn, investment.transactions, riskGroup]
+  );
+
+  const liveSplit: ProtocolSplit | null = useMemo(() => {
+    if (!liveProtocol) return null;
+    const split = buildProtocolSplitFromBalances(
+      liveProtocol.aaveBalance,
+      liveProtocol.compoundBalance,
+      liveProtocol.morphoBalance
     );
-    const yieldAmount = parseFloat(lastYield.yield);
-    const initialInvestment = parseFloat(investment.amount);
-    const yieldPercentage =
-      initialInvestment > 0 ? ((yieldAmount / initialInvestment) * 100).toFixed(2) : "0";
+    return split.total > 0 ? split : null;
+  }, [liveProtocol]);
+
+  const stats = useMemo(() => {
+    const initialInvestment = riskGroup
+      ? riskGroup.totalDeposited
+      : parseFloat(investment.amount);
+    const currentValue = riskGroup
+      ? riskGroup.estimatedCurrentValue
+      : parseFloat(investment.currentValue || investment.amount);
+    const yieldUsd = currentValue - initialInvestment;
+    const yieldPct = initialInvestment > 0 ? (yieldUsd / initialInvestment) * 100 : 0;
 
     return {
-      totalDays,
-      yieldAmount: yieldAmount.toFixed(2),
-      yieldPercentage,
+      initialInvestment,
+      currentValue,
+      yieldUsd,
+      yieldPct,
       startDate: new Date(investment.createdAt),
-      currentValue: investment.currentValue || investment.amount,
+      depositCount: riskGroup?.depositCount ?? 1,
     };
-  }, [investment]);
+  }, [investment, riskGroup]);
 
-  const riskBagde = {
-    conservative: "bg-blue-100 text-blue-800",
-    balanced: "bg-green-100 text-green-800",
-    aggressive: "bg-orange-100 text-orange-800",
+  const activity = useMemo(() => {
+    const txns = riskGroup
+      ? riskGroup.deposits.flatMap((d) => d.transactions)
+      : investment.transactions;
+    return [...txns].sort((a, b) => b.timestamp - a.timestamp);
+  }, [investment.transactions, riskGroup]);
+
+  const riskBadge = {
+    conservative: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300",
+    balanced: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300",
+    aggressive: "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300",
   };
 
   const durationLabel = {
-    daily: "Daily checks",
-    weekly: "Weekly checks",
-    monthly: "Monthly checks",
-    quarterly: "Quarterly checks",
-    halfYearly: "Half-yearly checks",
+    daily: "Daily rebalance checks",
+    weekly: "Weekly rebalance checks",
+    monthly: "Monthly rebalance checks",
+    quarterly: "Quarterly rebalance checks",
+    halfYearly: "Half-yearly rebalance checks",
   };
 
+  const title = riskGroup
+    ? `${riskGroup.label} bucket (${riskGroup.depositCount} deposits)`
+    : isLive
+      ? "Live vault position"
+      : `Deposit · ${stats.startDate.toLocaleDateString()}`;
+
+  const apys = { aave: aaveAPY, compound: compoundAPY, morpho: morphoAPY };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="surface-card w-full max-w-2xl rounded-2xl p-6 max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+      <div className="surface-card max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl p-6">
+        <div className="mb-6 flex items-start justify-between">
           <div>
-            <h2 className="font-display text-2xl font-bold text-brand-black">
-              Investment #{investment.id.slice(-6)}
-            </h2>
-            <p className="text-xs text-neutral-500 mt-1">
-              Created {stats.startDate.toLocaleDateString()}
+            <h2 className="font-display text-2xl font-bold text-brand-black">{title}</h2>
+            <p className="mt-1 text-xs text-neutral-500">
+              {riskGroup
+                ? `Combined view · $${formatUsd(riskGroup.totalDeposited)} deposited`
+                : isLive
+                  ? "Current vault shares on Base Sepolia"
+                  : `Deposited ${stats.startDate.toLocaleString()}`}
             </p>
+            {/* Tx hash link */}
+            {!riskGroup && !isLive && investment.id && investment.id.startsWith("0x") && (
+              <a
+                href={`${EXPLORER}/tx/${investment.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 inline-block text-[11px] font-mono text-brand-green hover:underline"
+              >
+                View on BaseScan ↗
+              </a>
+            )}
           </div>
-          <button
-            onClick={onClose}
-            className="text-neutral-400 hover:text-brand-black text-xl"
-          >
+          <button onClick={onClose} className="rounded-full p-1 text-xl text-neutral-400 hover:bg-neutral-100 hover:text-brand-black dark:hover:bg-neutral-700">
             ✕
           </button>
         </div>
 
-        {/* Status Badge */}
-        <div className="flex gap-2 mb-6">
+        <div className="mb-6 flex flex-wrap gap-2">
           <span
-            className={`px-3 py-1 rounded-full text-xs font-semibold ${riskBagde[investment.riskLevel]}`}
+            className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${riskBadge[riskGroup?.riskLevel ?? investment.riskLevel]}`}
           >
-            {investment.riskLevel.charAt(0).toUpperCase() + investment.riskLevel.slice(1)} Risk
+            {(riskGroup?.riskLevel ?? investment.riskLevel).replace(/^./, (c) => c.toUpperCase())} risk
           </span>
-          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800">
-            {durationLabel[investment.duration]}
-          </span>
-          <span
-            className={`px-3 py-1 rounded-full text-xs font-semibold ${
-              investment.status === "active"
-                ? "bg-green-100 text-green-800"
-                : investment.status === "failed"
-                  ? "bg-red-100 text-red-800"
-                  : "bg-gray-100 text-gray-800"
-            }`}
-          >
-            {investment.status === "active"
-              ? "Completed"
-              : investment.status === "failed"
-                ? "Failed"
-                : "Pending"}
-          </span>
+          {!riskGroup && (
+            <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-800 dark:bg-neutral-700 dark:text-neutral-200">
+              {durationLabel[investment.duration]}
+            </span>
+          )}
         </div>
 
-        {/* Key Metrics */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="bg-brand-bg p-4 rounded-lg">
-            <p className="text-xs font-semibold text-neutral-600">Initial Deposit</p>
+        <div className="mb-6 grid grid-cols-2 gap-4">
+          <div className="rounded-lg bg-brand-bg p-4 dark:bg-neutral-800/50">
+            <p className="text-xs font-semibold text-neutral-600 dark:text-neutral-400">Total deposited</p>
             <p className="mt-2 font-display text-xl font-bold text-brand-black">
-              ${parseFloat(investment.amount).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+              ${formatUsd(stats.initialInvestment)}
             </p>
           </div>
-          <div className="bg-brand-bg p-4 rounded-lg">
-            <p className="text-xs font-semibold text-neutral-600">Current Value</p>
+          <div className="rounded-lg bg-brand-bg p-4 dark:bg-neutral-800/50">
+            <p className="text-xs font-semibold text-neutral-600 dark:text-neutral-400">Est. current value</p>
             <p className="mt-2 font-display text-xl font-bold text-brand-black">
-              ${parseFloat(stats.currentValue).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+              ${formatUsd(stats.currentValue)}
             </p>
           </div>
-          <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-            <p className="text-xs font-semibold text-green-700">Total Yield Earned</p>
-            <p className="mt-2 font-display text-xl font-bold text-green-700">
-              ${stats.yieldAmount}
+          <div
+            className={`rounded-lg border p-4 ${stats.yieldUsd >= 0 ? "border-emerald-200 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-900/20" : "border-red-200 bg-red-50 dark:border-red-700 dark:bg-red-900/20"}`}
+          >
+            <p className={`text-xs font-semibold ${stats.yieldUsd >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-red-700 dark:text-red-400"}`}>
+              Yield earned
+            </p>
+            <p className={`mt-2 font-display text-xl font-bold ${stats.yieldUsd >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-red-700 dark:text-red-400"}`}>
+              {stats.yieldUsd >= 0 ? "+" : ""}${formatUsd(Math.abs(stats.yieldUsd))}
             </p>
           </div>
-          <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-            <p className="text-xs font-semibold text-green-700">Yield %</p>
-            <p className="mt-2 font-display text-xl font-bold text-green-700">{stats.yieldPercentage}%</p>
+          <div
+            className={`rounded-lg border p-4 ${stats.yieldUsd >= 0 ? "border-emerald-200 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-900/20" : "border-red-200 bg-red-50 dark:border-red-700 dark:bg-red-900/20"}`}
+          >
+            <p className={`text-xs font-semibold ${stats.yieldUsd >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-red-700 dark:text-red-400"}`}>
+              Yield %
+            </p>
+            <p className={`mt-2 font-display text-xl font-bold ${stats.yieldUsd >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-red-700 dark:text-red-400"}`}>
+              {stats.yieldUsd >= 0 ? "+" : ""}{formatPct(stats.yieldPct)}%
+            </p>
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-2 mb-6 border-b border-brand-gray">
-          <button
-            onClick={() => setView("overview")}
-            className={`px-4 py-2 text-sm font-semibold transition ${
-              view === "overview"
-                ? "text-brand-green border-b-2 border-brand-green"
-                : "text-neutral-600 hover:text-brand-black"
-            }`}
-          >
-            Overview
-          </button>
-          <button
-            onClick={() => setView("history")}
-            className={`px-4 py-2 text-sm font-semibold transition ${
-              view === "history"
-                ? "text-brand-green border-b-2 border-brand-green"
-                : "text-neutral-600 hover:text-brand-black"
-            }`}
-          >
-            Transaction History
-          </button>
-          <button
-            onClick={() => setView("chart")}
-            className={`px-4 py-2 text-sm font-semibold transition ${
-              view === "chart"
-                ? "text-brand-green border-b-2 border-brand-green"
-                : "text-neutral-600 hover:text-brand-black"
-            }`}
-          >
-            Charts
-          </button>
+        <div className="mb-6 flex gap-2 border-b border-brand-gray dark:border-neutral-600">
+          {(["overview", "splits", "activity"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setView(tab)}
+              className={`px-4 py-2 text-sm font-semibold capitalize transition ${
+                view === tab
+                  ? "border-b-2 border-brand-green text-brand-green"
+                  : "text-neutral-600 hover:text-brand-black dark:text-neutral-400 dark:hover:text-neutral-200"
+              }`}
+            >
+              {tab === "splits" ? "Protocol split" : tab}
+            </button>
+          ))}
         </div>
 
-        {/* Overview Tab */}
         {view === "overview" && (
           <div className="space-y-4">
-            <div className="bg-brand-bg p-4 rounded-lg">
-              <p className="text-xs font-semibold text-neutral-600">Duration</p>
-              <p className="mt-1 text-sm text-brand-black">{stats.totalDays} days</p>
+            {riskGroup && (
+              <div className="rounded-lg bg-brand-bg p-4 dark:bg-neutral-800/50">
+                <p className="text-xs font-semibold text-neutral-600 dark:text-neutral-400">Deposits in this bucket</p>
+                <ul className="mt-2 space-y-1 text-sm text-brand-black">
+                  {riskGroup.deposits.map((d) => (
+                    <li key={d.id} className="flex justify-between">
+                      <span>{new Date(d.createdAt).toLocaleString()}</span>
+                      <span className="font-semibold">${formatUsd(parseFloat(d.amount))}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <div className="rounded-lg bg-brand-bg p-4 dark:bg-neutral-800/50">
+              <p className="text-xs font-semibold text-neutral-600 dark:text-neutral-400">Strategy</p>
+              <p className="mt-1 text-sm text-brand-black">{riskGroup?.hint ?? durationLabel[investment.duration]}</p>
             </div>
-            <div className="bg-brand-bg p-4 rounded-lg">
-              <p className="text-xs font-semibold text-neutral-600">Risk Profile</p>
-              <p className="mt-1 text-sm text-brand-black">
-                {investment.riskLevel === "conservative"
-                  ? "Conservative - 40% allocation"
-                  : investment.riskLevel === "balanced"
-                    ? "Balanced - 60% allocation"
-                    : "Aggressive - 80% allocation"}
-              </p>
-            </div>
-            <div className="bg-brand-bg p-4 rounded-lg">
-              <p className="text-xs font-semibold text-neutral-600">Rebalance Frequency</p>
-              <p className="mt-1 text-sm text-brand-black">{durationLabel[investment.duration]}</p>
-            </div>
-          </div>
-        )}
-
-        {/* History Tab */}
-        {view === "history" && (
-          <div className="space-y-3">
-            {investment.transactions.length === 0 ? (
-              <p className="text-sm text-neutral-500">No transactions yet</p>
-            ) : (
-              investment.transactions.map((txn) => {
-                console.log("Transaction status:", txn.status);
-                return (
-                <div
-                  key={txn.id}
-                  className="border border-brand-gray rounded-lg p-4 space-y-3"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold text-brand-black text-sm">
-                        {txn.type.charAt(0).toUpperCase() + txn.type.slice(1)}
-                      </p>
-                      <span
-                        className={`px-3 py-1 text-[10px] font-semibold rounded ${
-                          txn.status === "active"
-                            ? "bg-green-100 text-green-800"
-                            : txn.status === "failed"
-                              ? "bg-red-100 text-red-800"
-                              : "bg-yellow-100 text-yellow-800"
-                        }`}
-                      >
-                        {txn.status == "active" ? "Completed" : txn.status === "failed" ? "✗ Failed" : "Pending"}
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-brand-black text-lg">
-                        ${parseFloat(txn.amount).toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {/* Protocol Allocation */}
-                  {txn.type === "deposit" && (txn.aaveAmount || txn.compoundAmount || txn.morphoAmount) && (
-                    <div className="bg-brand-bg/50 rounded-lg p-3 space-y-2">
-                      <p className="text-xs font-semibold text-neutral-600 uppercase tracking-wide">Allocated to:</p>
-                      {[
-                        {
-                          label: "Aave v3",
-                          amount: txn.aaveAmount,
-                          pct: txn.aavePercentage,
-                          bar: "bg-blue-500",
-                        },
-                        {
-                          label: "Compound v3",
-                          amount: txn.compoundAmount,
-                          pct: txn.compoundPercentage,
-                          bar: "bg-emerald-500",
-                        },
-                        {
-                          label: "Morpho Blue",
-                          amount: txn.morphoAmount,
-                          pct: txn.morphoPercentage,
-                          bar: "bg-violet-500",
-                        },
-                      ].map((entry) => {
-                        if (!entry.amount) return null;
-                        const width = typeof entry.pct === "number" ? `${entry.pct}%` : "0%";
-                        return (
-                          <div key={entry.label} className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <div className={`w-2.5 h-2.5 rounded-full ${entry.bar}`}></div>
-                                <span className="text-xs text-neutral-600 font-medium">{entry.label}</span>
-                              </div>
-                              <span className="text-xs font-semibold text-brand-black">
-                                ${parseFloat(entry.amount).toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                                {typeof entry.pct === "number" ? ` (${entry.pct}%)` : ""}
-                              </span>
-                            </div>
-                            <div className="w-full bg-neutral-200 rounded-full h-1.5">
-                              <div
-                                className={`${entry.bar} h-1.5 rounded-full`}
-                                style={{ width }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                  
-                  <div className="flex items-center justify-between text-xs text-neutral-500">
-                    <p>{new Date(txn.timestamp).toLocaleString()}</p>
-                    <p className="font-mono text-neutral-500">{txn.txHash === "failed" ? "Failed" : txn.txHash.slice(0, 16)}...</p>
-                  </div>
-                </div>
-                );
-              })
+            {depositTxn?.note && (
+              <div className="rounded-lg bg-brand-bg p-4 dark:bg-neutral-800/50">
+                <p className="text-xs font-semibold text-neutral-600 dark:text-neutral-400">Note</p>
+                <p className="mt-1 text-sm text-brand-black">{depositTxn.note}</p>
+              </div>
             )}
           </div>
         )}
 
-        {/* Charts Tab */}
-        {view === "chart" && (
+        {view === "splits" && (
           <div className="space-y-6">
-            {/* Line Chart - Value Over Time */}
-            <div>
-              <h4 className="text-sm font-semibold text-brand-black mb-4">Portfolio Value Over Time</h4>
-              <div className="bg-brand-bg p-4 rounded-lg h-48 flex items-center justify-center">
-                <div className="text-center">
-                  <p className="text-xs text-neutral-500">Line Chart Placeholder</p>
-                  <div className="mt-4 space-y-2 w-full">
-                    {investment.yields.map((y, idx) => (
-                      <div key={idx} className="flex items-center justify-between text-xs">
-                        <span className="text-neutral-600">
-                          {new Date(y.timestamp).toLocaleDateString()}
-                        </span>
-                        <div className="flex-1 mx-2 h-1 bg-brand-green rounded"></div>
-                        <span className="font-semibold text-brand-black">
-                          ${parseFloat(y.value).toFixed(0)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+            <div className="rounded-xl border border-brand-gray/60 p-4 dark:border-neutral-600">
+              <ProtocolSplitBars
+                split={depositSplit}
+                title="At deposit (combined %)"
+                subtitle="Percentage split across Aave, Compound, and Morpho when funds were invested."
+                apys={apys}
+              />
             </div>
-
-            {/* Bar Chart - Yield Earned */}
-            <div>
-              <h4 className="text-sm font-semibold text-brand-black mb-4">Yield Progression</h4>
-              <div className="bg-brand-bg p-4 rounded-lg h-48 flex items-center justify-center">
-                <div className="text-center w-full">
-                  <p className="text-xs text-neutral-500 mb-4">Bar Chart Placeholder</p>
-                  <div className="flex items-end justify-center gap-2 h-32">
-                    {investment.yields.map((y, idx) => {
-                      const maxYield = Math.max(
-                        ...investment.yields.map((yd) => parseFloat(yd.yield))
-                      );
-                      const height = maxYield > 0 ? (parseFloat(y.yield) / maxYield) * 100 : 0;
-                      return (
-                        <div
-                          key={idx}
-                          className="flex-1 bg-green-400 rounded-t"
-                          style={{ height: `${height}%`, minHeight: "4px" }}
-                          title={`${y.timestamp}: $${y.yield}`}
-                        />
-                      );
-                    })}
-                  </div>
-                  <div className="mt-4 text-xs text-neutral-600">
-                    Peak Yield: ${Math.max(...investment.yields.map((y) => parseFloat(y.yield))).toFixed(2)}
-                  </div>
-                </div>
+            {liveSplit && (
+              <div className="rounded-xl border border-brand-green/40 bg-brand-green/5 p-4 dark:border-brand-green/30 dark:bg-brand-green/10">
+                <ProtocolSplitBars
+                  split={liveSplit}
+                  title="Live wallet split (current %)"
+                  subtitle="Your full position today — may differ after rebalances."
+                  apys={apys}
+                />
               </div>
-            </div>
-
-            {/* APY Over Time */}
-            <div>
-              <h4 className="text-sm font-semibold text-brand-black mb-4">APY History</h4>
-              <div className="bg-brand-bg p-4 rounded-lg space-y-2">
-                {investment.yields.map((y, idx) => (
-                  <div key={idx} className="flex items-center justify-between text-xs">
-                    <span className="text-neutral-600">
-                      {new Date(y.timestamp).toLocaleDateString()}
-                    </span>
-                    <span className="font-semibold text-brand-black">{y.apy}%</span>
-                  </div>
-                ))}
+            )}
+            {liveSplit && depositSplit.total > 0 && (
+              <div className="rounded-lg bg-brand-bg p-4 text-xs text-neutral-600 dark:bg-neutral-800/50 dark:text-neutral-400">
+                <p className="font-semibold text-brand-black">How to read this</p>
+                <p className="mt-2">
+                  <strong>Deposit split</strong> shows where money went when you deposited.{" "}
+                  <strong>Live split</strong> shows where the router holds funds now after yield accrual and rebalancing.
+                  The difference indicates how much the strategy router has moved your funds to chase better APY.
+                </p>
               </div>
-            </div>
+            )}
           </div>
         )}
 
-        {/* Close Button */}
+        {view === "activity" && (
+          <div className="space-y-4">
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                Transactions
+              </p>
+              <div className="space-y-3">
+                {activity.length === 0 ? (
+                  <p className="text-sm text-neutral-500">No transaction history for this selection.</p>
+                ) : (
+                  activity.map((txn) => (
+                    <div key={txn.id} className="rounded-lg border border-brand-gray p-4 space-y-2 dark:border-neutral-600">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-block h-2 w-2 rounded-full ${
+                            txn.type === "deposit" ? "bg-emerald-500" :
+                            txn.type === "withdrawal" ? "bg-red-500" :
+                            "bg-blue-500"
+                          }`} />
+                          <p className="text-sm font-semibold capitalize text-brand-black">{txn.type}</p>
+                        </div>
+                        <p className="font-semibold text-brand-black">
+                          ${formatUsd(parseFloat(txn.amount))}
+                        </p>
+                      </div>
+                      {txn.note && <p className="text-xs text-neutral-600 dark:text-neutral-400">{txn.note}</p>}
+                      {txn.type === "deposit" && (txn.aaveAmount || txn.compoundAmount) && (
+                        <ProtocolSplitBars
+                          split={sumProtocolFromTransactions([txn])}
+                          compact
+                          hideZero
+                          apys={apys}
+                        />
+                      )}
+                      <div className="flex items-center justify-between text-[11px] text-neutral-500">
+                        <span>{new Date(txn.timestamp).toLocaleString()}</span>
+                        {txn.txHash && txn.txHash !== "live" && (
+                          <a
+                            href={`${EXPLORER}/tx/${txn.txHash}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-mono text-brand-green hover:underline"
+                          >
+                            {txn.txHash.slice(0, 10)}… ↗
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {rebalanceHistory.length > 0 && (
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                  Rebalance history
+                </p>
+                <div className="space-y-2">
+                  {rebalanceHistory.slice(0, 8).map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-brand-gray/50 px-3 py-2 text-xs dark:border-neutral-600"
+                    >
+                      <span className="text-neutral-500">{entry.when}</span>
+                      <span className="font-medium text-brand-black">
+                        {entry.from} → {entry.to}
+                      </span>
+                      <span className="font-mono">{entry.amount}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         <button
           onClick={onClose}
-          className="mt-6 w-full px-4 py-2 rounded-lg bg-brand-green text-white font-semibold transition hover:bg-brand-green/90"
+          className="mt-6 w-full rounded-lg bg-brand-green px-4 py-2 font-semibold text-white transition hover:bg-brand-green/90"
         >
           Close
         </button>

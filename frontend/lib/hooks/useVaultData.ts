@@ -7,18 +7,27 @@ import { formatUSDC, bpsToPercentage } from "@/lib/utils/contractUtils";
 /**
  * Shared query settings to prevent excessive RPC calls.
  * staleTime ensures wagmi deduplicates identical queries across components.
- * refetchInterval is set to 2 minutes (was 30s) to reduce polling frequency.
+ * refetchIntervalInBackground: false stops polling when the tab is hidden.
  */
 const SHARED_QUERY = {
-  staleTime: 60_000,       // data stays fresh for 60s — no duplicate fetches
-  refetchInterval: 120_000, // poll every 2 min instead of 30s
+  staleTime: 120_000,                 // data stays fresh for 2 min
+  refetchInterval: 300_000,            // poll every 5 min
+  refetchIntervalInBackground: false,  // stop when tab is hidden
+  refetchOnMount: false as const,      // don't refetch on mount if data is fresh
+} as const;
+
+const APY_QUERY = {
+  staleTime: 300_000,                  // APY changes slowly — 5 min fresh
+  refetchInterval: 600_000,            // poll every 10 min
+  refetchIntervalInBackground: false,
+  refetchOnMount: false as const,
 } as const;
 
 /**
  * Get the total assets held in the vault
  */
 export function useTotalAssets() {
-  const { data, isLoading, error } = useReadContract({
+  const { data, isLoading, error, refetch } = useReadContract({
     address: BASE_SEPOLIA_DEPLOYMENT.vaultManager,
     abi: VAULT_MANAGER_ABI,
     functionName: "totalAssets",
@@ -30,6 +39,7 @@ export function useTotalAssets() {
     totalAssetsBigInt: data as bigint | undefined,
     isLoading,
     error,
+    refetch,
   };
 }
 
@@ -37,7 +47,7 @@ export function useTotalAssets() {
  * Get user's vault share balance
  */
 export function useUserVaultShares(address?: string) {
-  const { data, isLoading, error } = useReadContract({
+  const { data, isLoading, error, refetch } = useReadContract({
     address: BASE_SEPOLIA_DEPLOYMENT.vaultManager,
     abi: VAULT_MANAGER_ABI,
     functionName: "balanceOf",
@@ -53,6 +63,7 @@ export function useUserVaultShares(address?: string) {
     sharesBigInt: data as bigint | undefined,
     isLoading,
     error,
+    refetch,
   };
 }
 
@@ -67,10 +78,7 @@ export function useProtocolAPY(protocol: "aave" | "compound" | "morpho") {
     address: BASE_SEPOLIA_DEPLOYMENT.strategyRouter,
     abi: STRATEGY_ROUTER_ABI,
     functionName,
-    query: {
-      staleTime: 120_000,      // APY changes slowly — keep fresh for 2 min
-      refetchInterval: 300_000, // poll every 5 min (was 60s)
-    },
+    query: APY_QUERY,
   });
 
   return {
@@ -112,10 +120,10 @@ export function useVaultAPYs() {
  * Position = shares * (totalAssets / totalSupply)
  */
 export function useUserPositionValue(userAddress?: string) {
-  const { totalAssetsBigInt } = useTotalAssets();
-  const { sharesBigInt } = useUserVaultShares(userAddress);
+  const { totalAssetsBigInt, refetch: refetchTotalAssets } = useTotalAssets();
+  const { sharesBigInt, refetch: refetchShares } = useUserVaultShares(userAddress);
 
-  const { data: totalSupply, isLoading: totalSupplyLoading } = useReadContract({
+  const { data: totalSupply, isLoading: totalSupplyLoading, refetch: refetchTotalSupply } = useReadContract({
     address: BASE_SEPOLIA_DEPLOYMENT.vaultManager,
     abi: VAULT_MANAGER_ABI,
     functionName: "totalSupply",
@@ -132,10 +140,39 @@ export function useUserPositionValue(userAddress?: string) {
     }
   }
 
+  const refetch = async () => {
+    await Promise.all([refetchTotalAssets?.(), refetchShares?.(), refetchTotalSupply?.()]);
+  };
+
   return {
     positionValue,
     sharesBigInt,
     isLoading: totalSupplyLoading,
     error: null,
+    refetch,
+  };
+}
+
+/**
+ * Maximum USDC the user can withdraw from the vault (ERC-4626 maxWithdraw).
+ */
+export function useMaxWithdraw(userAddress?: string) {
+  const { data, isLoading, error, refetch } = useReadContract({
+    address: BASE_SEPOLIA_DEPLOYMENT.vaultManager,
+    abi: VAULT_MANAGER_ABI,
+    functionName: "maxWithdraw",
+    args: userAddress ? [userAddress as `0x${string}`] : undefined,
+    query: {
+      enabled: !!userAddress,
+      ...SHARED_QUERY,
+    },
+  });
+
+  return {
+    maxWithdraw: data ? formatUSDC(data as bigint) : "0",
+    maxWithdrawBigInt: data as bigint | undefined,
+    isLoading,
+    error,
+    refetch,
   };
 }

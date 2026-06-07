@@ -31,12 +31,13 @@ export function YieldCard() {
             {
                 address: BASE_SEPOLIA_ADDRESSES.strategyRouter,
                 abi: strategyABI,
-                functionName: "getCurrentBlendedAPY",
+                functionName: "getCurrentAPYs",
             },
             {
                 address: BASE_SEPOLIA_ADDRESSES.strategyRouter,
                 abi: strategyABI,
-                functionName: "getAllocation",
+                functionName: "getUserProtocolBalances",
+                args: [address ?? "0x0000000000000000000000000000000000000000"],
             },
         ],
         query: {
@@ -91,16 +92,20 @@ export function YieldCard() {
     const userSharesBN = (userSharesRes?.result as bigint) ?? BigInt(0);
     const totalSupplyBN = (totalSupplyRes?.result as bigint) ?? BigInt(0);
     const totalAssetsBN = (totalAssetsRes?.result as bigint) ?? BigInt(0);
-    const apyBP = Number((apyRes?.result as bigint) ?? BigInt(0));
+    const apyArgs = (apyRes?.result as [bigint, bigint, bigint]) ?? [BigInt(0), BigInt(0), BigInt(0)];
+    const apyValues = apyArgs.map((v) => Number(v) / 100);
+    const apyPercent = (
+        apyValues.filter((v) => Number.isFinite(v) && v > 0).reduce((sum, v) => sum + v, 0) /
+        Math.max(1, apyValues.filter((v) => Number.isFinite(v) && v > 0).length)
+    ).toFixed(2);
 
-    const allocationArgs = (allocationRes?.result as [bigint, bigint]) ?? [BigInt(0), BigInt(0)];
-    const aavePercentBN = allocationArgs[0];
-    const compoundPercentBN = allocationArgs[1];
-
-    const aavePercent = Number(aavePercentBN);
-    const compoundPercent = Number(compoundPercentBN);
-
-    const apyPercent = (apyBP / 100).toFixed(2);
+    const balancesArgs = (allocationRes?.result as [bigint, bigint, bigint]) ?? [BigInt(0), BigInt(0), BigInt(0)];
+    const aaveBalance = Number(formatUnits(balancesArgs[0], 6));
+    const compoundBalance = Number(formatUnits(balancesArgs[1], 6));
+    const morphoBalance = Number(formatUnits(balancesArgs[2], 6));
+    const totalBalance = aaveBalance + compoundBalance + morphoBalance;
+    const aavePercent = totalBalance > 0 ? (aaveBalance / totalBalance) * 100 : 0;
+    const compoundPercent = totalBalance > 0 ? (compoundBalance / totalBalance) * 100 : 0;
 
     let currentValueUSDC = 0;
     if (totalSupplyBN > BigInt(0)) {
@@ -186,8 +191,8 @@ export function YieldCard() {
                     )}
                 </div>
                 <div className="flex justify-between mt-2 text-xs font-semibold">
-                    <span className="text-[#B6509E]">Aave {aavePercent}%</span>
-                    <span className="text-[#00D395]">Compound {compoundPercent}%</span>
+                    <span className="text-[#B6509E]">Aave {aavePercent.toFixed(1)}%</span>
+                    <span className="text-[#00D395]">Compound {compoundPercent.toFixed(1)}%</span>
                 </div>
             </div>
         </div>

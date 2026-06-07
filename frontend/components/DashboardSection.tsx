@@ -4,14 +4,17 @@ import { useAccount } from "wagmi";
 import { StatCard } from "@/components/StatCard";
 import { WalletOverview } from "@/components/WalletOverview";
 import { ProtocolAllocation } from "@/components/ProtocolAllocation";
-import { ProtocolBreakdown } from "@/components/ProtocolBreakdown";
 import { RiskAndFees } from "@/components/RiskAndFees";
 import { CheckingDuration } from "@/components/CheckingDuration";
 import { RebalanceTable } from "@/components/RebalanceTable";
 import { InvestmentPortfolio } from "@/components/InvestmentPortfolio";
-import { MarketplacePortfolio } from "@/components/marketplace/MarketplacePortfolio";
+import { BASE_SEPOLIA_DEPLOYMENT } from "@/lib/contracts";
 import { useVaultAPYs, useUserPositionValue } from "@/lib/hooks/useVaultData";
 import { useHydrated } from "@/lib/hooks/useHydrated";
+
+function shortAddress(address: string) {
+  return `${address.slice(0, 6)}…${address.slice(-4)}`;
+}
 
 export function DashboardSection() {
   const hydrated = useHydrated();
@@ -28,27 +31,37 @@ export function DashboardSection() {
 
       <div className="relative mx-auto max-w-6xl">
         <p className="text-center text-xs font-semibold uppercase tracking-[0.2em] text-brand-green">
-          Marketplace
+          Live Vault Dashboard
         </p>
         <h2 className="mt-3 text-center font-display text-3xl font-extrabold tracking-tight text-brand-black sm:text-4xl">
-          Your portfolio
+          Your USDC vault
         </h2>
         <p className="mx-auto mt-4 max-w-2xl text-center text-sm leading-relaxed text-neutral-600">
-          Track positions, yield, and returns. Use{" "}
-          <strong className="font-semibold text-brand-black">Buy</strong> to
-          deposit and <strong className="font-semibold text-brand-black">Sell &amp; Trade</strong>{" "}
-          to withdraw.
+          Track where your USDC sits, how much is deployed, and when the router last rebalanced.
+          This dashboard reads the live Base Sepolia contracts directly.
         </p>
 
-        {/* Individual Investments Section */}
+        <div className="mx-auto mt-6 grid max-w-3xl gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-brand-gray/60 bg-white p-3 text-left shadow-soft">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-500">Vault</p>
+            <p className="mt-1 text-xs font-mono text-brand-black">{shortAddress(BASE_SEPOLIA_DEPLOYMENT.vaultManager)}</p>
+          </div>
+          <div className="rounded-2xl border border-brand-gray/60 bg-white p-3 text-left shadow-soft">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-500">Strategy</p>
+            <p className="mt-1 text-xs font-mono text-brand-black">{shortAddress(BASE_SEPOLIA_DEPLOYMENT.strategyRouter)}</p>
+          </div>
+          <div className="rounded-2xl border border-brand-gray/60 bg-white p-3 text-left shadow-soft">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-500">Risk registry</p>
+            <p className="mt-1 text-xs font-mono text-brand-black">{shortAddress(BASE_SEPOLIA_DEPLOYMENT.riskRegistry)}</p>
+          </div>
+        </div>
+
         <div className="mt-8">
           <h3 className="text-center text-sm font-semibold uppercase tracking-[0.1em] text-brand-green mb-4">
-            Individual Investments
+            Live position
           </h3>
           <InvestmentPortfolio />
         </div>
-
-        <MarketplacePortfolio />
 
         {hydrated ? (
           <div className="mt-12 space-y-5">
@@ -58,31 +71,27 @@ export function DashboardSection() {
               <StatCard
                 label="Blended vault APY"
                 value={`${blendedAPY}%`}
-                sub={
-                  apyLoading
-                    ? "Loading..."
-                    : "Same headline yield for USD value after USDC/USDT/DAI entry"
-                }
+                sub={apyLoading ? "Loading..." : "Average of live protocol APY reads"}
               />
               <StatCard
                 label="Your position"
                 value={positionValue && positionValue !== "0" ? `$${Number(positionValue).toLocaleString(undefined, { maximumFractionDigits: 2 })}` : "—"}
-                sub={
-                  positionLoading
-                    ? "Loading..."
-                    : "Vault shares (ERC-4626); underlying is USDC"
-                }
+                sub={positionLoading ? "Loading..." : "Vault shares and underlying USDC value"}
               />
-              <ProtocolBreakdown />
-            </div>
-            
-            {/* Middle row - Allocation & Risk */}
-            <div className="grid items-stretch gap-5 lg:grid-cols-2">
               <ProtocolAllocation />
-              <RiskAndFees />
             </div>
-            
-            {/* Bottom row - Checking Duration */}
+            <div className="grid items-stretch gap-5 lg:grid-cols-2">
+              <RiskAndFees />
+              <div className="surface-card rounded-2xl p-6">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neutral-500">
+                  Position summary
+                </p>
+                <p className="mt-3 text-sm leading-relaxed text-neutral-600">
+                  This view shows the latest vault shares, live USDC value, and the current protocol split for the connected wallet. If history is empty, the vault still shows the current on-chain balance as the primary investment.
+                </p>
+              </div>
+            </div>
+
             <div className="grid items-stretch gap-5 lg:grid-cols-1">
               <CheckingDuration />
             </div>

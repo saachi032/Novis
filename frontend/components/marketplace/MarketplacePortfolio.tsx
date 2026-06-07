@@ -114,7 +114,7 @@ export function MarketplacePortfolio() {
               Total vault assets: ${parseFloat(totalAssets || "0").toFixed(2)}
             </>
           ) : (
-            "No investments yet. Connect your wallet and deposit USDC, USDT, or DAI to start earning yield."
+            "No investments yet. Connect your wallet and deposit USDC to start earning yield."
           )}
         </p>
         {hasPosition ? (
@@ -137,7 +137,7 @@ export function MarketplacePortfolio() {
                       Novis USDC Vault
                     </div>
                     <p className="text-[11px] text-neutral-500">
-                      Aave v3 · Compound v3
+                    Aave v3 · Compound v3
                     </p>
                   </td>
                   <td className="px-4 py-3 font-mono text-xs">

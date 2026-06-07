@@ -275,8 +275,8 @@ export function BacktestSimulator({ initialCapital = 1000 }: { initialCapital?: 
                 </div>
                 <p className="text-xs text-neutral-500">Drag the brush to zoom · scroll wheel zooms in many browsers</p>
               </div>
-              <div className="mt-3 h-[52vh] min-h-[380px] max-h-[560px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="mt-3 h-[52vh] min-h-[380px] max-h-[560px] w-full min-w-0">
+                <ResponsiveContainer width="100%" height={420}>
                   <LineChart data={apyChartData} margin={{ top: 12, right: 20, left: 4, bottom: 4 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis dataKey="day" tick={{ fontSize: 10 }} interval="preserveStartEnd" minTickGap={28} />
@@ -357,8 +357,8 @@ export function BacktestSimulator({ initialCapital = 1000 }: { initialCapital?: 
                 Green: dynamic strategy using the rules above. Blue, orange, violet: stay 100% in one venue on the same
                 daily APY path.
               </p>
-              <div className="mt-3 h-[48vh] min-h-[340px] max-h-[520px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="mt-3 h-[48vh] min-h-[340px] max-h-[520px] w-full min-w-0">
+                <ResponsiveContainer width="100%" height={400}>
                   <LineChart data={capitalChartData} margin={{ top: 12, right: 20, left: 4, bottom: 4 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis dataKey="day" tick={{ fontSize: 10 }} interval="preserveStartEnd" minTickGap={28} />

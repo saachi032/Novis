@@ -108,7 +108,7 @@ export function useDeposit() {
 }
 
 /**
- * Hook for withdrawing (redeeming shares) from the vault
+ * Hook for withdrawing USDC from the vault
  */
 export function useWithdraw() {
   const { address } = useAccount();
@@ -120,7 +120,7 @@ export function useWithdraw() {
   const vaultManagerAddress = getVaultManagerAddress(chainId);
 
   const withdraw = useCallback(
-    async (shares: string) => {
+    async (assets: string) => {
       if (!address) {
         throw new Error("Wallet not connected");
       }
@@ -131,17 +131,17 @@ export function useWithdraw() {
         throw new Error("Public client unavailable");
       }
 
-      const parsedShares = parseUSDC(shares);
+      const parsedAssets = parseUSDC(assets);
       const txHash = await writeContractAsync({
         address: vaultManagerAddress,
         abi: VAULT_MANAGER_ABI,
-        functionName: "redeem",
-        args: [parsedShares, address, address],
+        functionName: "withdraw",
+        args: [parsedAssets, address, address],
         gas: 800_000n,
       });
       const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
       if (receipt.status !== "success") {
-        throw new Error("Vault redemption reverted");
+        throw new Error("Vault withdrawal reverted");
       }
       setHash(txHash);
     },

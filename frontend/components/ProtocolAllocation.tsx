@@ -23,6 +23,7 @@ export function ProtocolAllocation() {
   const compoundRate = !hydrated || isLoading ? "—" : `${compoundAPY}%`;
   const morphoRate = !hydrated || isLoading ? "—" : `${morphoAPY}%`;
   const totalNum = parseFloat(total || "0");
+  const showMorpho = parseFloat(morphoBalance || "0") > 0 || Number(morphoPercentage) > 0;
 
   return (
     <div className="surface-card h-full flex flex-col p-5 transition duration-300 hover:scale-[1.01] hover:shadow-lg">
@@ -64,18 +65,20 @@ export function ProtocolAllocation() {
                 />
               </div>
             </div>
-            <div>
-              <div className="mb-2 flex justify-between text-xs font-semibold">
-                <span className="text-neutral-600">Morpho Blue</span>
-                <span className="text-brand-black">{morphoPercentage}%</span>
+            {showMorpho && (
+              <div>
+                <div className="mb-2 flex justify-between text-xs font-semibold">
+                  <span className="text-neutral-600">Morpho Blue</span>
+                  <span className="text-brand-black">{morphoPercentage}%</span>
+                </div>
+                <div className="h-2.5 overflow-hidden rounded-full bg-brand-gray/70">
+                  <div
+                    className="h-full rounded-full bg-violet-500 transition-all duration-500"
+                    style={{ width: `${morphoPercentage}%` }}
+                  />
+                </div>
               </div>
-              <div className="h-2.5 overflow-hidden rounded-full bg-brand-gray/70">
-                <div
-                  className="h-full rounded-full bg-violet-500 transition-all duration-500"
-                  style={{ width: `${morphoPercentage}%` }}
-                />
-              </div>
-            </div>
+            )}
           </>
         )}
       </div>
@@ -99,15 +102,21 @@ export function ProtocolAllocation() {
           </p>
           <p className="mt-1 text-[10px] text-neutral-500">{compoundBalance}</p>
         </div>
-        <div className="rounded-xl border border-brand-gray/60 bg-brand-bg/50 py-2.5 px-3 text-center">
-          <p className="text-[10px] font-medium uppercase tracking-widest text-neutral-500">
-            Morpho APY
-          </p>
-          <p className="mt-1 font-display text-lg font-bold text-brand-black">
-            {morphoRate}
-          </p>
-          <p className="mt-1 text-[10px] text-neutral-500">{morphoBalance}</p>
-        </div>
+        {showMorpho ? (
+          <div className="rounded-xl border border-brand-gray/60 bg-brand-bg/50 py-2.5 px-3 text-center">
+            <p className="text-[10px] font-medium uppercase tracking-widest text-neutral-500">
+              Morpho APY
+            </p>
+            <p className="mt-1 font-display text-lg font-bold text-brand-black">
+              {morphoRate}
+            </p>
+            <p className="mt-1 text-[10px] text-neutral-500">{morphoBalance}</p>
+          </div>
+        ) : (
+          <div className="rounded-xl border border-brand-gray/60 bg-brand-bg/30 py-2.5 px-3 text-center text-xs text-neutral-500">
+            Morpho inactive
+          </div>
+        )}
       </div>
     </div>
   );

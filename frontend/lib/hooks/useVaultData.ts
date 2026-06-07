@@ -1,5 +1,5 @@
 import { useReadContract } from "wagmi";
-import { BASE_SEPOLIA_ADDRESSES } from "@/lib/contracts";
+import { BASE_SEPOLIA_DEPLOYMENT } from "@/lib/contracts";
 import { VAULT_MANAGER_ABI } from "@/lib/abis/VaultManager";
 import { STRATEGY_ROUTER_ABI } from "@/lib/abis/StrategyRouter";
 import { formatUSDC, bpsToPercentage } from "@/lib/utils/contractUtils";
@@ -19,7 +19,7 @@ const SHARED_QUERY = {
  */
 export function useTotalAssets() {
   const { data, isLoading, error } = useReadContract({
-    address: BASE_SEPOLIA_ADDRESSES.vaultManager,
+    address: BASE_SEPOLIA_DEPLOYMENT.vaultManager,
     abi: VAULT_MANAGER_ABI,
     functionName: "totalAssets",
     query: SHARED_QUERY,
@@ -38,7 +38,7 @@ export function useTotalAssets() {
  */
 export function useUserVaultShares(address?: string) {
   const { data, isLoading, error } = useReadContract({
-    address: BASE_SEPOLIA_ADDRESSES.vaultManager,
+    address: BASE_SEPOLIA_DEPLOYMENT.vaultManager,
     abi: VAULT_MANAGER_ABI,
     functionName: "balanceOf",
     args: address ? [address as `0x${string}`] : undefined,
@@ -64,7 +64,7 @@ export function useProtocolAPY(protocol: "aave" | "compound" | "morpho") {
     protocol === "aave" ? "getAaveAPY" : protocol === "compound" ? "getCompoundAPY" : "getMorphoAPY";
 
   const { data, isLoading, error } = useReadContract({
-    address: BASE_SEPOLIA_ADDRESSES.strategyRouter,
+    address: BASE_SEPOLIA_DEPLOYMENT.strategyRouter,
     abi: STRATEGY_ROUTER_ABI,
     functionName,
     query: {
@@ -89,10 +89,13 @@ export function useVaultAPYs() {
   const compound = useProtocolAPY("compound");
   const morpho = useProtocolAPY("morpho");
 
-  const aaveRate = parseFloat(aave.apy);
-  const compoundRate = parseFloat(compound.apy);
-  const morphoRate = parseFloat(morpho.apy);
-  const blendedAPY = (aaveRate + compoundRate + morphoRate) / 3;
+  const apyValues = [aave.apy, compound.apy, morpho.apy]
+    .map((value) => Number.parseFloat(value))
+    .filter((value) => Number.isFinite(value) && value > 0);
+  const blendedAPY =
+    apyValues.length > 0
+      ? apyValues.reduce((sum, value) => sum + value, 0) / apyValues.length
+      : 0;
 
   return {
     aaveAPY: aave.apy,
@@ -113,7 +116,7 @@ export function useUserPositionValue(userAddress?: string) {
   const { sharesBigInt } = useUserVaultShares(userAddress);
 
   const { data: totalSupply, isLoading: totalSupplyLoading } = useReadContract({
-    address: BASE_SEPOLIA_ADDRESSES.vaultManager,
+    address: BASE_SEPOLIA_DEPLOYMENT.vaultManager,
     abi: VAULT_MANAGER_ABI,
     functionName: "totalSupply",
     query: SHARED_QUERY,

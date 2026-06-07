@@ -86,7 +86,7 @@ export function DepositPanel() {
       }
 
       if (!getStablecoinOptions(chainId)) {
-        setError("Switch your wallet to Base Sepolia or Base mainnet.");
+        setError("Switch your wallet to Base Sepolia to use this vault.");
         return;
       }
 
@@ -170,20 +170,19 @@ export function DepositPanel() {
       )}
       
       <h3 className="font-display text-lg font-bold text-brand-black">
-        Deposit stablecoins
+        Deposit USDC
       </h3>
       <p className="mt-1 text-xs text-neutral-500">
-        Earn {blendedAPY}% APY through Aave & Compound
+        Earn {blendedAPY}% APY through Aave and Compound on Base Sepolia.
       </p>
 
       <p className="mt-2 text-xs text-neutral-500">
-        This deployment is USDC-only. USDT and DAI are documented as planned
-        support, but they are not part of the live deposit flow yet.
+        The live deployment is USDC-only and writes strategy state before the deposit is submitted.
       </p>
 
       {!allOptions && (
         <p className="mt-4 text-sm text-amber-800">
-          Connect to Base Sepolia or Base mainnet to use this vault.
+          Connect to Base Sepolia to use this vault.
         </p>
       )}
 

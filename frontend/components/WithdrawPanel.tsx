@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useAccount } from "wagmi";
-import { useUserVaultShares, useVaultAPYs } from "@/lib/hooks/useVaultData";
+import { useUserVaultShares, useUserPositionValue, useVaultAPYs } from "@/lib/hooks/useVaultData";
 import { useWithdraw } from "@/lib/hooks/useDepositWithdraw";
 import { useHydrated } from "@/lib/hooks/useHydrated";
 
@@ -10,6 +10,7 @@ export function WithdrawPanel() {
   const hydrated = useHydrated();
   const { address, isConnected } = useAccount();
   const { shares } = useUserVaultShares(address);
+  const { positionValue } = useUserPositionValue(address);
   const { blendedAPY } = useVaultAPYs();
   const { withdraw, isLoading, hash } = useWithdraw();
 
@@ -18,6 +19,7 @@ export function WithdrawPanel() {
   const [success, setSuccess] = useState<string | null>(null);
 
   const shareBigInt = shares && shares !== "0" ? parseFloat(shares) : 0;
+  const positionUsd = positionValue && positionValue !== "0" ? parseFloat(positionValue) : 0;
 
   const handleWithdrawAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -37,13 +39,13 @@ export function WithdrawPanel() {
         return;
       }
 
-      if (parseFloat(withdrawAmount) > shareBigInt) {
-        setError(`You only have ${shareBigInt.toFixed(4)} shares`);
+      if (parseFloat(withdrawAmount) > positionUsd) {
+        setError(`You only have about $${positionUsd.toFixed(2)} available to withdraw`);
         return;
       }
 
       await withdraw(withdrawAmount);
-      setSuccess("Redeem submitted. You will receive USDC (vault underlying).");
+      setSuccess("Withdrawal submitted. You will receive USDC from the vault.");
       setWithdrawAmount("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Withdrawal failed");
@@ -66,23 +68,21 @@ export function WithdrawPanel() {
       {showNoSharesMessage && (
         <div className="mb-4 rounded-lg border border-blue-300 bg-blue-50 p-4">
           <p className="text-sm font-semibold text-blue-900">
-            You don&apos;t have any vault shares yet. Deposit a supported stablecoin to earn
-            yield.
+            You don&apos;t have any vault shares yet. Deposit USDC to earn yield.
           </p>
         </div>
       )}
 
       <h3 className="font-display text-lg font-bold text-brand-black">Withdraw</h3>
       <p className="mt-1 text-xs text-neutral-500">
-        Redeem vault shares for <strong className="text-brand-black">USDC</strong>. Blended APY
-        reference: {blendedAPY}% — your position earns in USD terms whether you entered with
-        USDC, USDT, or DAI.
+        Withdraw <strong className="text-brand-black">USDC</strong> directly from the vault.
+        Blended APY reference: {blendedAPY}%.
       </p>
 
       <div className="mt-6 space-y-4">
         <div>
           <label className="block text-xs font-semibold text-neutral-600">
-            Shares to redeem
+            USDC to withdraw
           </label>
           <div className="mt-2 flex items-center gap-2">
             <input
@@ -93,9 +93,9 @@ export function WithdrawPanel() {
               disabled={showDisconnectMessage || showNoSharesMessage}
               className="flex-1 rounded-lg border border-brand-gray/60 bg-white px-4 py-3 text-sm font-mono text-brand-black placeholder:text-neutral-400 focus:border-brand-green focus:outline-none focus:ring-1 focus:ring-brand-green disabled:bg-neutral-100 disabled:text-neutral-500"
             />
-            <button
+              <button
               type="button"
-              onClick={() => setWithdrawAmount(shareBigInt.toString())}
+              onClick={() => setWithdrawAmount(positionUsd.toString())}
               disabled={showDisconnectMessage || showNoSharesMessage}
               className="rounded-lg border border-brand-gray/60 px-3 py-3 text-xs font-semibold text-brand-black hover:bg-brand-bg disabled:bg-neutral-100 disabled:text-neutral-500"
             >
@@ -103,7 +103,7 @@ export function WithdrawPanel() {
             </button>
           </div>
           <p className="mt-2 text-[11px] text-neutral-500">
-            Settlement is USDC on-chain. Swap elsewhere if you want USDT or DAI after exiting.
+            The vault settles in USDC. Convert elsewhere if you want another stablecoin.
           </p>
         </div>
 
@@ -117,7 +117,7 @@ export function WithdrawPanel() {
         {withdrawAmount && (
           <div className="rounded-lg bg-brand-bg/50 p-4">
             <div className="flex justify-between text-xs">
-              <span className="text-neutral-600">Rough USDC out (1:1 demo):</span>
+              <span className="text-neutral-600">Requested USDC out:</span>
               <span className="font-semibold text-brand-black">
                 ${parseFloat(withdrawAmount).toFixed(2)}
               </span>
@@ -145,7 +145,7 @@ export function WithdrawPanel() {
           }
           className="w-full rounded-lg bg-red-500 py-3 font-semibold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-neutral-300 disabled:text-neutral-600"
         >
-          {isLoading ? "Processing…" : "Redeem for USDC"}
+          {isLoading ? "Processing…" : "Withdraw USDC"}
         </button>
 
         {hash && (

@@ -19,8 +19,8 @@ export default function SellPage() {
                     <p className="mx-auto mt-4 max-w-md text-center text-sm leading-relaxed text-neutral-600">
                         Redeem vault shares for <strong className="font-semibold text-brand-black">USDC</strong>{" "}
                         (the vault&apos;s underlying asset). The router pulls liquidity from
-                        Aave and Compound automatically. To hold USDT or DAI afterward, swap on
-                        your favorite DEX.
+                        Aave and Compound automatically. If you want another stablecoin after
+                        withdrawing, swap on your favorite DEX.
                     </p>
                     <div className="mx-auto mt-8 max-w-xl">
                         <StablecoinBalancesStrip />

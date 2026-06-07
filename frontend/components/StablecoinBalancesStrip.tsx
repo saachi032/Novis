@@ -70,7 +70,7 @@ export function StablecoinBalancesStrip({
       >
         {options.length === 0 && (
           <p className="col-span-full text-sm text-neutral-500">
-            Switch to Base Sepolia or Base mainnet to load stablecoin balances.
+            Switch to Base Sepolia to load stablecoin balances.
           </p>
         )}
         {options.map((o) => {

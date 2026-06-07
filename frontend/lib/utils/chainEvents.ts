@@ -1,6 +1,6 @@
 import type { Abi, PublicClient } from "viem";
 
-const DEFAULT_CHUNK_SIZE = 10_000n;
+const DEFAULT_CHUNK_SIZE = 1_900n;
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export async function getContractEventsInChunks<TAbi extends Abi>({
@@ -28,23 +28,6 @@ export async function getContractEventsInChunks<TAbi extends Abi>({
       : latest > 2_000_000n
         ? latest - 2_000_000n
         : 0n;
-
-  try {
-    const allEvents = await publicClient.getContractEvents({
-      address,
-      abi,
-      eventName: eventName as never,
-      args: args as never,
-      fromBlock: start,
-      toBlock: latest,
-    });
-    return allEvents as any[];
-  } catch (err) {
-    const message = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
-    if (!message.includes("range") && !message.includes("limit") && !message.includes("429") && !message.includes("10000 results")) {
-      throw err;
-    }
-  }
 
   const events: any[] = [];
   let cursor = start;

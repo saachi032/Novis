@@ -22,6 +22,7 @@ export function RebalanceTable() {
   } = useUserPositionBreakdown(hydrated ? address : undefined);
   const { history, refreshHistory } = useRebalanceHistory();
   const [showSuccess, setShowSuccess] = useState(false);
+  const showMorpho = parseFloat(morphoBalance || "0") > 0 || Number(morphoPercentage) > 0;
 
   const handleForceRebalance = async () => {
     try {
@@ -92,27 +93,28 @@ export function RebalanceTable() {
                 </div>
               </div>
 
-              {/* Morpho */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-violet-500"></div>
-                    <span className="text-xs font-semibold text-brand-black">Morpho Blue</span>
+              {showMorpho && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-violet-500"></div>
+                      <span className="text-xs font-semibold text-brand-black">Morpho Blue</span>
+                    </div>
+                    <span className="text-xs font-bold text-brand-black">
+                      ${parseFloat(morphoBalance).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    </span>
                   </div>
-                  <span className="text-xs font-bold text-brand-black">
-                    ${parseFloat(morphoBalance).toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                  </span>
+                  <div className="w-full bg-neutral-100 rounded-full h-2">
+                    <div
+                      className="bg-violet-500 h-2 rounded-full transition-all duration-500"
+                      style={{ width: `${morphoPercentage}%` }}
+                    ></div>
+                  </div>
+                  <div className="mt-1 text-right text-[10px] text-neutral-600">
+                    {morphoPercentage}% of position
+                  </div>
                 </div>
-                <div className="w-full bg-neutral-100 rounded-full h-2">
-                  <div
-                    className="bg-violet-500 h-2 rounded-full transition-all duration-500"
-                    style={{ width: `${morphoPercentage}%` }}
-                  ></div>
-                </div>
-                <div className="mt-1 text-right text-[10px] text-neutral-600">
-                  {morphoPercentage}% of position
-                </div>
-              </div>
+              )}
 
               {/* Total */}
               <div className="border-t border-brand-gray pt-3">

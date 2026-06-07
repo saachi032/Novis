@@ -1,5 +1,7 @@
 # On-Chain HACKX: DeFi Yield Optimizer & Robo-Advisor
 
+**Live Demo:** [https://on-chain-hackx.onrender.com](https://on-chain-hackx.onrender.com)
+
 A non-custodial, intelligent yield optimizer built on **Base Sepolia**. This protocol automates USDC yield generation by dynamically routing liquidity across leading lending markets (Aave v3, Compound v3, Morpho Blue) based on individual user risk profiles.
 
 ## Architecture

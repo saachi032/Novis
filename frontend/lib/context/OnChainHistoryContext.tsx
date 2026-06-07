@@ -658,6 +658,7 @@ export function OnChainHistoryProvider({ children }: { children: ReactNode }) {
     () => ({
       investments,
       rebalanceHistory,
+      rawEvents,
       isLoading,
       error,
       refreshHistory,
@@ -668,6 +669,7 @@ export function OnChainHistoryProvider({ children }: { children: ReactNode }) {
     [
       investments,
       rebalanceHistory,
+      rawEvents,
       isLoading,
       error,
       refreshHistory,
